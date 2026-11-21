@@ -47,7 +47,7 @@ if "lat" not in st.session_state:
 if "lon" not in st.session_state:
     st.session_state.lon = -0.2450
 if "wind_unit" not in st.session_state:
-    st.session_state.wind_unit = "mph"  # Also controls Visibility unit (mph -> miles)
+    st.session_state.wind_unit = "mph"
 if "show_overlay" not in st.session_state:
     st.session_state.show_overlay = False
 
@@ -94,7 +94,6 @@ if data and "hourly" in data:
     hourly = data["hourly"]
     times = hourly["time"]
     
-    # Find current hour index using local naive time to match Open-Meteo timezone=auto format
     now_local = datetime.now()
     current_idx = 0
     for i, t_str in enumerate(times):
@@ -103,11 +102,9 @@ if data and "hourly" in data:
             current_idx = max(0, i - 1)
             break
             
-    # Slice 24-hour rolling window (anchored at NOW)
     window_slice = slice(current_idx, current_idx + 24)
     t_labels = times[window_slice]
     
-    # Helper to sanitize lists against unexpected API None values (prevents TypeErrors)
     def clean_list(lst, default=0.0):
         sliced = lst[window_slice] if lst else []
         return [x if x is not None else default for x in sliced]
@@ -120,18 +117,16 @@ if data and "hourly" in data:
     visibility = clean_list(hourly.get("visibility", []), 10000.0)
     uv_raw = clean_list(hourly.get("uv_index", []), 0.0)
     
-    # Unit conversions for UK preference safely
     if st.session_state.wind_unit == "mph":
         wind_spd = [s * 0.621371 for s in wind_spd]
         wind_gst = [g * 0.621371 for g in wind_gst]
-        vis_vals = [v / 1609.34 for v in visibility]  # Meters to Miles
+        vis_vals = [v / 1609.34 for v in visibility]
         vis_unit = "miles"
     else:
-        vis_vals = [v / 1000.0 for v in visibility]    # Meters to KM
+        vis_vals = [v / 1000.0 for v in visibility]
         vis_unit = "km"
 
-    # SVG Builder Dimensions & Layout Constants
-    W, H = 380, 88  # Taller graph strips for clarity
+    W, H = 380, 88
     pad_l, pad_r = 45, 45
     pad_t, pad_b = 10, 15
     plot_w = W - pad_l - pad_r
@@ -145,7 +140,7 @@ if data and "hourly" in data:
     # CORE 4 CHARTS (ZERO-SCROLL VIEW)
     # ==========================================
     
-    # 1. TEMPERATURE CHART (Snapped to 5-degree increments, 0°C freezing line)
+    # 1. TEMPERATURE CHART
     min_t = min(temps) if temps else 0
     max_t = max(temps) if temps else 10
     bound_min = 5 * (int(min_t // 5) - (1 if min_t < 0 else 0))
@@ -170,7 +165,7 @@ if data and "hourly" in data:
     </svg>
     """
     
-    # 2. WIND CHART (Fixed zero-floor, shaded sustained fill, gust line above)
+    # 2. WIND CHART
     max_w = max(max(wind_gst or [20]), 20)
     wind_max_scale = 20 * (int(max_w // 20) + 1)
     
@@ -192,7 +187,7 @@ if data and "hourly" in data:
     </svg>
     """
 
-    # 3. PRECIPITATION CHART (Shaded fill, peak mm with knockout background gap)
+    # 3. PRECIPITATION CHART (Fixed Y-Axis label positioning on the right)
     max_p = max(max(precip_amt or [1.0]), 1.0)
     p_scale = 5 if max_p <= 5 else 10 * (int(max_p // 10) + 1)
     
@@ -221,7 +216,7 @@ if data and "hourly" in data:
     </svg>
     """
 
-    # 4. COMBINED HUMIDITY & UV STRIP (0-100% Normalized Scale)
+    # 4. COMBINED HUMIDITY & UV STRIP
     uv_scaled = [min(100, u * 8.3) for u in uv_raw]
     
     def scale_pct(val):
@@ -245,27 +240,29 @@ if data and "hourly" in data:
     """
 
     # ==========================================
-    # RENDER CORE 4 CHARTS ON MAIN SCREEN
+    # RENDER CORE 4 CHARTS INSIDE UNIFIED CARDS
     # ==========================================
-    st.markdown('<div class="weather-card">', unsafe_allow_html=True)
-    st.markdown("**Temperature (°C)**")
-    st.markdown(temp_svg, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="weather-card">', unsafe_allow_html=True)
-    st.markdown(f"**Wind & Gusts ({st.session_state.wind_unit})**")
-    st.markdown(wind_svg, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="weather-card">', unsafe_allow_html=True)
-    st.markdown("**Precipitation (Probability & Intensity)**")
-    st.markdown(precip_svg, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="weather-card">', unsafe_allow_html=True)
-    st.markdown("**Humidity & Solar UV (0–100% Scale)**")
-    st.markdown(hum_uv_svg, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="weather-card">
+        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Temperature (°C)</div>
+        {temp_svg}
+    </div>
+    
+    <div class="weather-card">
+        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Wind & Gusts ({st.session_state.wind_unit})</div>
+        {wind_svg}
+    </div>
+    
+    <div class="weather-card">
+        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Precipitation (Probability & Intensity)</div>
+        {precip_svg}
+    </div>
+    
+    <div class="weather-card">
+        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Humidity & Solar UV (0–100% Scale)</div>
+        {hum_uv_svg}
+    </div>
+    """, unsafe_allow_html=True)
 
     # ==========================================
     # 1-BUTTON TOGGLE OVERLAY FOR EXTRA CHARTS
@@ -300,9 +297,12 @@ if data and "hourly" in data:
           <text x="{W - pad_r + 6}" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
         </svg>
         """
-        st.markdown(f'<div class="weather-card">**Visibility ({vis_unit})**', unsafe_allow_html=True)
-        st.markdown(vis_svg, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="weather-card">
+            <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Visibility ({vis_unit})</div>
+            {vis_svg}
+        </div>
+        """, unsafe_allow_html=True)
 
     # ==========================================
     # SETTINGS & GUIDE DRAWER
