@@ -47,7 +47,6 @@ if "lat" not in st.session_state:
                 st.session_state.lat = float(data["latitude"])
                 st.session_state.lon = float(data["longitude"])
                 st.session_state.city = data.get("city", data.get("region", "Current Location"))
-                # Auto-select metric wind outside UK/US
                 country_code = data.get("country_code", "GB")
                 if country_code not in ["GB", "US"]:
                     st.session_state.unit_wind = "km/h"
@@ -306,7 +305,6 @@ def fetch_met_norway(latitude, longitude):
         rh = details.get("relative_humidity", 70.0)
         w_ms = details.get("wind_speed", 3.0)
         w_kmh = w_ms * 3.6
-        # Steadman apparent temperature approximation
         e_hpa = (rh / 100.0) * 6.105 * math.exp((17.27 * t_c) / (237.7 + t_c))
         app_c = t_c + 0.33 * e_hpa - 0.70 * w_ms - 4.00
 
@@ -357,7 +355,7 @@ def get_weather_with_fallback(latitude, longitude):
 
 data, is_stale = get_weather_with_fallback(lat, lon)
 
-# Extract timezone & 24-hour rolling slice anchored to NOW
+# Extract timezone & 24-hour rolling slice anchored to NOW (using local naive time to avoid TypeErrors)
 tz_name = data.get("timezone", "Europe/London") if data else "Europe/London"
 try:
     tz = ZoneInfo(tz_name)
@@ -390,12 +388,18 @@ if is_stale or not data or "hourly" not in data:
 else:
     h_data = data["hourly"]
     all_times = h_data["time"]
-    current_hour_prefix = now.strftime("%Y-%m-%dT%H")
+    
+    # Robust current hour match using local naive comparison
+    now_local = datetime.now()
     start_idx = 0
-    for idx, t in enumerate(all_times):
-        if t.startswith(current_hour_prefix):
-            start_idx = idx
-            break
+    for idx, t_str in enumerate(all_times):
+        try:
+            dt = datetime.fromisoformat(t_str.replace("Z", ""))
+            if dt >= now_local:
+                start_idx = max(0, idx - 1)
+                break
+        except Exception:
+            pass
     end_idx = min(start_idx + 25, len(all_times))
 
     def get_slice(key, default_val=0.0):
@@ -420,7 +424,6 @@ else:
         "uv": get_slice("uv_index", 0.0),
     }
 
-    # Parse sunrise/sunset hours for grey night band
     sunrise_hours, sunset_hours = [], []
     daily = data.get("daily", {})
     for sr in daily.get("sunrise", []):
@@ -441,7 +444,6 @@ if st.session_state.loc2:
     if d2 and "hourly" in d2 and not stale2:
         h2 = d2["hourly"]
         t2 = h2["time"]
-        # Align 2nd location to the exact same 24h index span
         s_idx2 = min(start_idx if not is_stale else 0, max(0, len(t2) - 25))
         e_idx2 = min(s_idx2 + 25, len(t2))
 
@@ -509,9 +511,9 @@ with col_logo:
         )
 
 
-# 7. Synchronized SVG Chart Builder (Zero Words, High Contrast, Color-Blind Safe)
+# 7. Synchronized SVG Chart Builder (Filled Areas Restored)
 def render_svg_dashboard():
-    W = 360  # Fixed internal SVG coordinate width (scales responsively to 100%)
+    W = 360  
     PAD_L = 6
     PAD_R = 6
     PLOT_W = W - PAD_L - PAD_R
@@ -527,7 +529,7 @@ def render_svg_dashboard():
     def x_pos(i):
         return PAD_L + (i / 24.0) * PLOT_W
 
-    # Determine Nighttime Shading Rectangles (Sunset to Sunrise)
+    # Nighttime Shading Rectangles
     sr_h = sunrise_hours[0]
     ss_h = sunset_hours[0]
     night_rects = []
@@ -545,20 +547,18 @@ def render_svg_dashboard():
     if in_night:
         night_rects.append((x_pos(n_start), x_pos(24)))
 
-    # Locate Midnight index for placing chart icons consistently under 0000
     midnight_x = x_pos(12)
     for i in range(25):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
-    # Clamp icon box so it never clips edges
     icon_x = max(PAD_L + 16, min(W - PAD_R - 42, midnight_x - 10))
 
     svg_parts = [
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">'
     ]
 
-    # Top Time Axis Row (Anchored at NOW on left)
+    # Top Time Axis Row
     svg_parts.append(
         f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>'
     )
@@ -574,7 +574,6 @@ def render_svg_dashboard():
             f'<text x="{xp}" y="13" font-size="9.5" font-weight="{weight}" fill="currentColor" opacity="0.85" text-anchor="{anchor}">{lbl}</text>'
         )
 
-    # Helper to build polyline & area points
     def make_points(vals, min_v, max_v, top_y, bot_y):
         span = max(max_v - min_v, 0.1)
         pts = []
@@ -584,20 +583,17 @@ def render_svg_dashboard():
             pts.append((xp, yp))
         return pts
 
-    # Render each selected metric strip
     for row_idx, metric in enumerate(active):
         y0 = HEADER_H + row_idx * STRIP_H
         y1 = y0 + STRIP_H
         top_pad = y0 + 10
         bot_pad = y1 - 8
 
-        # Nighttime light-grey vertical background bands
         for nx1, nx2 in night_rects:
             svg_parts.append(
                 f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128,128,128,0.14)"/>'
             )
 
-        # Horizontal divider line
         if row_idx > 0:
             svg_parts.append(
                 f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>'
@@ -614,7 +610,7 @@ def render_svg_dashboard():
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
-            # Transparent terracotta fill under Temp
+            # Translucent terracotta fill under Temp curve
             area_str = (
                 f"M {pts_t[0][0]:.1f},{bot_pad} "
                 + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t)
@@ -622,19 +618,16 @@ def render_svg_dashboard():
             )
             svg_parts.append(f'<path d="{area_str}" fill="rgba(217, 72, 15, 0.14)"/>')
 
-            # Feels like line (Amber)
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
             svg_parts.append(
                 f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.85"/>'
             )
 
-            # Primary Temp line (Terracotta)
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
             svg_parts.append(
                 f'<polyline points="{t_str}" fill="none" stroke="#c92a2a" stroke-width="2.1"/>'
             )
 
-            # 2nd Location Dotted Overlay (High-contrast Navy)
             if slice_data_2:
                 pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
@@ -642,7 +635,6 @@ def render_svg_dashboard():
                     f'<polyline points="{t2_str}" fill="none" stroke="#1e3a8a" stroke-width="1.4" stroke-dasharray="3,3"/>'
                 )
 
-            # Icon & Scale under Midnight
             svg_parts.append(
                 f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
             )
@@ -661,6 +653,7 @@ def render_svg_dashboard():
             mms = slice_data["precip_mm"]
             pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
 
+            # Translucent blue fill under Precipitation probability
             area_str = (
                 f"M {pts_p[0][0]:.1f},{bot_pad} "
                 + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p)
@@ -680,7 +673,6 @@ def render_svg_dashboard():
                     f'<polyline points="{p2_str}" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-dasharray="3,3"/>'
                 )
 
-            # Peak mm label positioned directly beneath the actual peak
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
@@ -690,7 +682,6 @@ def render_svg_dashboard():
                     f'<text x="{px:.1f}" y="{lbl_y:.1f}" font-size="8.5" font-weight="800" fill="#1d4ed8" text-anchor="middle">{round(max_mm, 1)}</text>'
                 )
 
-            # Droplet Icon & 100/50/0 Scale
             svg_parts.append(
                 f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
             )
@@ -729,7 +720,6 @@ def render_svg_dashboard():
                     f'<polyline points="{w2_str}" fill="none" stroke="#b45309" stroke-width="1.4" stroke-dasharray="3,3"/>'
                 )
 
-            # Wind direction arrows along top edge every 3 hours
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
@@ -741,7 +731,6 @@ def render_svg_dashboard():
                     f"</g>"
                 )
 
-            # Wind Icon & Scale
             svg_parts.append(
                 f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
             )
@@ -771,7 +760,6 @@ def render_svg_dashboard():
                     f'<polyline points="{v2_str}" fill="none" stroke="#1e3a8a" stroke-width="1.4" stroke-dasharray="3,3"/>'
                 )
 
-            # Eye Icon & Scale
             svg_parts.append(
                 f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
             )
@@ -878,7 +866,6 @@ def resolve_location_string(query_str):
 
 # 8. Integrated Guide, Multi-Location, Chart Order & Language Settings Drawer
 with st.expander(T["drawer_title"]):
-    # Primary Location Search
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
         q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -901,7 +888,6 @@ with st.expander(T["drawer_title"]):
             st.query_params.clear()
             st.rerun()
 
-    # 2nd Family Location Overlay Search
     st.markdown(f"#### {T['loc2_head']}")
     with st.form(key="loc2_form"):
         q2 = st.text_input("2nd Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -918,7 +904,6 @@ with st.expander(T["drawer_title"]):
             st.session_state.loc2 = None
             st.rerun()
 
-    # Front Screen Chart Selection & Ordering
     st.markdown(f"#### {T['charts_head']}")
     chart_labels = {
         "temp": "🌡️ Temp & Feels Like",
@@ -939,7 +924,6 @@ with st.expander(T["drawer_title"]):
         st.session_state.active_charts = selected
         st.rerun()
 
-    # Units & Language Toggles
     st.markdown(f"#### {T['units_head']}")
     c_u1, c_u2, c_u3 = st.columns(3)
     with c_u1:
@@ -964,10 +948,9 @@ with st.expander(T["drawer_title"]):
             st.session_state.lang = l_choice
             st.rerun()
 
-    # Physics & Everyman Guide
     st.markdown(T["guide_md"])
 
-# 9. Footer Branding (Identical to WashDry)
+# 9. Footer Branding
 st.markdown(
     """
     <div class="footer-container">
