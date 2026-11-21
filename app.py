@@ -13,26 +13,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom mobile-first styling (Optimized for iPhone 13 mini & zero-bloat aesthetic)
+# Custom mobile-first styling (Ultra-clean stacked strips, zero bulky cards)
 st.markdown("""
 <style>
-    /* Hide Streamlit default chrome */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    .stApp { background-color: #fcfcfc; color: #111111; max-width: 420px; margin: 0 auto; }
+    .stApp { background-color: #ffffff; color: #111111; max-width: 420px; margin: 0 auto; padding: 10px; }
     
-    /* Clean card wrappers */
-    .weather-card {
-        background: #ffffff;
-        border: 1px solid #eaeaea;
-        border-radius: 12px;
-        padding: 12px 14px;
-        margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    /* Clean strip wrapper replacing heavy cards */
+    .metric-strip {
+        border-bottom: 1px solid #eaeaea;
+        padding: 4px 0;
+        margin-bottom: 4px;
     }
-    
-    /* Typography */
     h1, h2, h3 { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 </style>
 """, unsafe_allow_html=True)
@@ -41,7 +35,7 @@ st.markdown("""
 # SESSION STATE & DEFAULTS
 # ==========================================
 if "location" not in st.session_state:
-    st.session_state.location = "Peterborough, UK"
+    st.session_state.location = "Peterborough"
 if "lat" not in st.session_state:
     st.session_state.lat = 52.5741
 if "lon" not in st.session_state:
@@ -76,15 +70,17 @@ def fetch_weather(lat, lon):
 data = fetch_weather(st.session_state.lat, st.session_state.lon)
 
 # ==========================================
-# HEADER & APP BRANDING
+# HEADER (Timestamp next to MyWeather on same line)
 # ==========================================
-col_title, col_logo = st.columns([3, 1])
+col_title, col_time, col_logo = st.col([2.2, 1.3, 0.5]) if hasattr(st, "col") else st.columns([2.2, 1.3, 0.5])
 with col_title:
     st.markdown("### MyWeather")
-    st.caption(f"📍 {st.session_state.location} &nbsp;|&nbsp; 🕒 {datetime.now().strftime('%H%M %d-%b-%y')}")
+with col_time:
+    st.markdown(f"<div style='text-align: right; font-size: 12px; color: #666; padding-top: 10px;'>{datetime.now().strftime('%H%M %d-%b-%y')}</div>", unsafe_allow_html=True)
 with col_logo:
-    st.markdown("🐱", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: right; font-size: 20px; padding-top: 6px;'>🐱</div>", unsafe_allow_html=True)
 
+st.markdown(f"<div style='font-size: 13px; color: #555; margin-bottom: 8px;'>📍 {st.session_state.location}</div>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ==========================================
@@ -126,9 +122,9 @@ if data and "hourly" in data:
         vis_vals = [v / 1000.0 for v in visibility]
         vis_unit = "km"
 
-    W, H = 380, 88
-    pad_l, pad_r = 45, 45
-    pad_t, pad_b = 10, 15
+    W, H = 380, 75
+    pad_l, pad_r = 35, 45
+    pad_t, pad_b = 8, 12
     plot_w = W - pad_l - pad_r
     plot_h = H - pad_t - pad_b
     n_pts = len(t_labels)
@@ -137,10 +133,23 @@ if data and "hourly" in data:
         return pad_l + (i / max(1, n_pts - 1)) * plot_w
 
     # ==========================================
-    # CORE 4 CHARTS (ZERO-SCROLL VIEW)
+    # TIMELINE HEADER ROW (1200, 1600, 2000...)
     # ==========================================
+    timeline_svg = f'<svg width="100%" height="22" viewBox="0 0 {W} 22" xmlns="http://www.w3.org/2000/svg">'
+    for i, t_str in enumerate(t_labels):
+        # Show label every 4 hours for clean spacing
+        if i % 4 == 0:
+            dt_obj = datetime.fromisoformat(t_str.replace("Z", ""))
+            lbl = dt_obj.strftime("%H%M")
+            x_pos = get_x(i)
+            timeline_svg += f'<text x="{x_pos}" y="14" font-size="9" fill="#888" text-anchor="middle" font-family="sans-serif">{lbl}</text>'
+    timeline_svg += '</svg>'
     
-    # 1. TEMPERATURE CHART
+    st.markdown(timeline_svg, unsafe_allow_html=True)
+
+    # ==========================================
+    # 1. TEMPERATURE STRIP
+    # ==========================================
     min_t = min(temps) if temps else 0
     max_t = max(temps) if temps else 10
     bound_min = 5 * (int(min_t // 5) - (1 if min_t < 0 else 0))
@@ -156,16 +165,40 @@ if data and "hourly" in data:
 
     temp_svg = f"""
     <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="{pad_l}" y="{pad_t}" width="{plot_w}" height="{plot_h}" fill="#ffffff"/>
-      {f'<line x1="{pad_l}" y1="{zero_y}" x2="{W-pad_r}" y2="{zero_y}" stroke="#4a90e2" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>' if zero_y else ''}
-      <polyline fill="none" stroke="#e056fd" stroke-width="2" points="{temp_pts}"/>
-      <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌡️ {bound_max}°</text>
-      <text x="335" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{(bound_max+bound_min)//2}°</text>
-      <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">{bound_min}°</text>
+      {f'<line x1="{pad_l}" y1="{zero_y}" x2="{W-pad_r}" y2="{zero_y}" stroke="#4a90e2" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.5"/>' if zero_y else ''}
+      <polyline fill="none" stroke="#e056fd" stroke-width="1.8" points="{temp_pts}"/>
+      <text x="335" y="{pad_t + 10}" font-size="9" fill="#666" font-family="sans-serif">{bound_max}°</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="9" fill="#666" font-family="sans-serif">{bound_min}°</text>
+      <text x="6" y="{pad_t + 12}" font-size="12">🔆</text>
     </svg>
     """
+    st.markdown(temp_svg, unsafe_allow_html=True)
+
+    # ==========================================
+    # 2. HUMIDITY & SOLAR UV STRIP
+    # ==========================================
+    uv_scaled = [min(100, u * 8.3) for u in uv_raw]
     
-    # 2. WIND CHART (Left-side scale)
+    def scale_pct(val):
+        return pad_t + plot_h - (val / 100.0) * plot_h
+
+    hum_pts = " ".join([f"{get_x(i)},{scale_pct(v):.1f}" for i, v in enumerate(humidity)])
+    uv_pts = " ".join([f"{get_x(i)},{scale_pct(v):.1f}" for i, v in enumerate(uv_scaled)])
+
+    hum_uv_svg = f"""
+    <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
+      <polyline fill="none" stroke="#2980b9" stroke-width="1.5" points="{hum_pts}"/>
+      <polyline fill="none" stroke="#f39c12" stroke-width="1.5" points="{uv_pts}"/>
+      <text x="335" y="{pad_t + 10}" font-size="9" fill="#666" font-family="sans-serif">100%</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="9" fill="#666" font-family="sans-serif">0%</text>
+      <text x="6" y="{pad_t + 12}" font-size="12">💧</text>
+    </svg>
+    """
+    st.markdown(hum_uv_svg, unsafe_allow_html=True)
+
+    # ==========================================
+    # 3. WIND & GUSTS STRIP
+    # ==========================================
     max_w = max(max(wind_gst or [20]), 20)
     wind_max_scale = 20 * (int(max_w // 20) + 1)
     
@@ -174,20 +207,21 @@ if data and "hourly" in data:
 
     sustained_pts = " ".join([f"{get_x(i)},{scale_w(v):.1f}" for i, v in enumerate(wind_spd)])
     gust_pts = " ".join([f"{get_x(i)},{scale_w(v):.1f}" for i, v in enumerate(wind_gst)])
-    sustained_area = f"{pad_l},{pad_t + plot_h} " + sustained_pts + f" {W-pad_r},{pad_t + plot_h}"
 
     wind_svg = f"""
     <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="{sustained_area}" fill="rgba(100,100,100,0.12)" />
-      <polyline fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="2,2" points="{gust_pts}"/>
-      <polyline fill="none" stroke="#333" stroke-width="2" points="{sustained_pts}"/>
-      <text x="4" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">💨 {wind_max_scale}</text>
-      <text x="4" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{wind_max_scale//2}</text>
-      <text x="4" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
+      <polyline fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="2,2" points="{gust_pts}"/>
+      <polyline fill="none" stroke="#333" stroke-width="1.8" points="{sustained_pts}"/>
+      <text x="335" y="{pad_t + 10}" font-size="9" fill="#666" font-family="sans-serif">{wind_max_scale}</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="9" fill="#666" font-family="sans-serif">0</text>
+      <text x="6" y="{pad_t + 12}" font-size="12">💨</text>
     </svg>
     """
+    st.markdown(wind_svg, unsafe_allow_html=True)
 
-    # 3. PRECIPITATION CHART (Fixed right-side scale)
+    # ==========================================
+    # 4. PRECIPITATION STRIP
+    # ==========================================
     max_p = max(max(precip_amt or [1.0]), 1.0)
     p_scale = 5 if max_p <= 5 else 10 * (int(max_p // 10) + 1)
     
@@ -195,131 +229,56 @@ if data and "hourly" in data:
         return pad_t + plot_h - (val / p_scale) * plot_h
 
     precip_pts = " ".join([f"{get_x(i)},{scale_p(v):.1f}" for i, v in enumerate(precip_amt)])
-    precip_area = f"{pad_l},{pad_t + plot_h} " + precip_pts + f" {W-pad_r},{pad_t + plot_h}"
-    
     peak_p_val = max(precip_amt) if precip_amt else 0
     peak_p_idx = precip_amt.index(peak_p_val) if peak_p_val > 0.1 and peak_p_val in precip_amt else None
     peak_px = get_x(peak_p_idx) if peak_p_idx is not None else 0
     peak_py = scale_p(peak_p_val) if peak_p_idx is not None else 0
 
-    mid_p_val = p_scale / 2
-    mid_p_str = f"{mid_p_val:g}"
-
     precip_svg = f"""
     <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="{precip_area}" fill="rgba(68, 108, 179, 0.2)" />
-      <polyline fill="none" stroke="#446cb3" stroke-width="2" points="{precip_pts}"/>
+      <polyline fill="none" stroke="#446cb3" stroke-width="1.8" points="{precip_pts}"/>
       {f'''
-      <rect x="{peak_px - 16}" y="{peak_py - 16}" width="32" height="14" fill="#ffffff" rx="3" opacity="0.9"/>
-      <text x="{peak_px}" y="{peak_py - 6}" font-size="9" font-weight="bold" fill="#2c3e50" text-anchor="middle" font-family="sans-serif">{peak_p_val:.1f}mm</text>
+      <rect x="{peak_px - 14}" y="{peak_py - 14}" width="28" height="12" fill="#ffffff" rx="2" opacity="0.9"/>
+      <text x="{peak_px}" y="{peak_py - 5}" font-size="8" font-weight="bold" fill="#2c3e50" text-anchor="middle" font-family="sans-serif">{peak_p_val:.1f}mm</text>
       ''' if peak_p_idx is not None and peak_p_val > 0.1 else ''}
-      <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌧️ {p_scale}</text>
-      <text x="335" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{mid_p_str}</text>
-      <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
+      <text x="335" y="{pad_t + 10}" font-size="9" fill="#666" font-family="sans-serif">{p_scale}</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="9" fill="#666" font-family="sans-serif">0</text>
+      <text x="6" y="{pad_t + 12}" font-size="12">👁️</text>
     </svg>
     """
-
-    # 4. COMBINED HUMIDITY & UV STRIP (Left-side scale)
-    uv_scaled = [min(100, u * 8.3) for u in uv_raw]
-    
-    def scale_pct(val):
-        return pad_t + plot_h - (val / 100.0) * plot_h
-
-    hum_pts = " ".join([f"{get_x(i)},{scale_pct(v):.1f}" for i, v in enumerate(humidity)])
-    uv_pts = " ".join([f"{get_x(i)},{scale_pct(v):.1f}" for i, v in enumerate(uv_scaled)])
-    hum_area = f"{pad_l},{pad_t + plot_h} " + hum_pts + f" {W-pad_r},{pad_t + plot_h}"
-    uv_area = f"{pad_l},{pad_t + plot_h} " + uv_pts + f" {W-pad_r},{pad_t + plot_h}"
-
-    hum_uv_svg = f"""
-    <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="{hum_area}" fill="rgba(52, 152, 219, 0.15)" />
-      <polygon points="{uv_area}" fill="rgba(241, 196, 15, 0.25)" />
-      <polyline fill="none" stroke="#2980b9" stroke-width="1.8" points="{hum_pts}"/>
-      <polyline fill="none" stroke="#f39c12" stroke-width="1.8" points="{uv_pts}"/>
-      <text x="4" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">💧/☀️ 100%</text>
-      <text x="4" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">50%</text>
-      <text x="4" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0%</text>
-    </svg>
-    """
-
-    # ==========================================
-    # RENDER CORE 4 CHARTS INSIDE UNIFIED CARDS
-    # ==========================================
-    st.markdown(f"""
-    <div class="weather-card">
-        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Temperature (°C)</div>
-        {temp_svg}
-    </div>
-    
-    <div class="weather-card">
-        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Wind & Gusts ({st.session_state.wind_unit})</div>
-        {wind_svg}
-    </div>
-    
-    <div class="weather-card">
-        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Precipitation (Probability & Intensity)</div>
-        {precip_svg}
-    </div>
-    
-    <div class="weather-card">
-        <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Humidity & Solar UV (0–100% Scale)</div>
-        {hum_uv_svg}
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(precip_svg, unsafe_allow_html=True)
 
     # ==========================================
     # 1-BUTTON TOGGLE OVERLAY FOR EXTRA CHARTS
     # ==========================================
+    st.markdown("---")
     if st.button("🔍 More Metrics (Visibility & Pressure)", use_container_width=True):
         st.session_state.show_overlay = not st.session_state.show_overlay
         st.rerun()
 
     if st.session_state.show_overlay:
-        st.markdown("---")
-        st.info("📂 **Additional Metrics Overlay Active** (Dimmed view of extra data)")
-        
+        st.info("📂 **Additional Metrics Overlay Active**")
         min_v = min(vis_vals) if vis_vals else 10.0
-        min_v_idx = vis_vals.index(min_v) if min_v in vis_vals else 0
         v_max = max(max(vis_vals or [10]), 10)
         
         def scale_v(val):
             return pad_t + plot_h - (val / v_max) * plot_h
 
         vis_pts = " ".join([f"{get_x(i)},{scale_v(v):.1f}" for i, v in enumerate(vis_vals)])
-        min_line_y = scale_v(min_v)
-        min_x_pos = get_x(min_v_idx)
-
         vis_svg = f"""
         <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-          <line x1="{pad_l}" y1="{min_line_y}" x2="{min_x_pos - 18}" y2="{min_line_y}" stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="3,3"/>
-          <line x1="{min_x_pos + 18}" y1="{min_line_y}" x2="{W-pad_r}" y2="{min_line_y}" stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="3,3"/>
-          <polyline fill="none" stroke="#16a085" stroke-width="2" points="{vis_pts}"/>
-          <rect x="{min_x_pos - 16}" y="{min_line_y - 8}" width="32" height="16" fill="#ffffff" rx="3" opacity="0.9"/>
-          <text x="{min_x_pos}" y="{min_line_y + 3}" font-size="9" font-weight="bold" fill="#c0392b" text-anchor="middle" font-family="sans-serif">{min_v:.1f}</text>
-          <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">👁️ {v_max:.0f}</text>
-          <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
+          <polyline fill="none" stroke="#16a085" stroke-width="1.8" points="{vis_pts}"/>
+          <text x="335" y="{pad_t + 10}" font-size="9" fill="#666" font-family="sans-serif">{v_max:.0f}</text>
+          <text x="335" y="{pad_t + plot_h}" font-size="9" fill="#666" font-family="sans-serif">0</text>
+          <text x="6" y="{pad_t + 12}" font-size="12">👁️</text>
         </svg>
         """
-        st.markdown(f"""
-        <div class="weather-card">
-            <div style="font-weight:600; margin-bottom:4px; font-size:14px;">Visibility ({vis_unit})</div>
-            {vis_svg}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(vis_svg, unsafe_allow_html=True)
 
     # ==========================================
     # SETTINGS & GUIDE DRAWER
     # ==========================================
     with st.expander("⚙️ Weather Guide & Location Settings"):
-        st.write("### Layout & Design Standards")
-        st.markdown("""
-        * **Core Four on Screen:** Main view locks in Temperature, Wind, Precipitation, and Humidity/Solar UV for instant zero-scroll mobile glanceability.
-        * **Overlay Toggle:** Visibility and Pressure live behind a single tap overlay button to keep the screen uncluttered.
-        * **Peak mm vs Total:** Precipitation numbers show the **maximum hourly intensity (peak mm/h)** expected during heavy bursts.
-        * **Fixed Zero-Floors:** Wind and Precipitation always anchor cleanly at absolute 0.
-        """)
-        
-        st.markdown("### Location & Units")
         new_loc = st.text_input("Location Name", value=st.session_state.location)
         unit_choice = st.selectbox("Wind & Visibility Units", ["mph", "km/h"], index=0 if st.session_state.wind_unit == "mph" else 1)
         
