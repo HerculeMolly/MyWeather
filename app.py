@@ -517,7 +517,7 @@ def render_svg_dashboard():
     PAD_R = 6
     PLOT_W = W - PAD_L - PAD_R
     HEADER_H = 18
-    STRIP_H = 96  # Expanded strip height
+    STRIP_H = 96
 
     active = st.session_state.active_charts
     if not active:
@@ -781,7 +781,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<polyline points="{h_str}" fill="none" stroke="#0284c7" stroke-width="1.8"/>'
             )
-            pr_str = " ".join(f="{x:.1f},{y:.1f}" for x, y in pts_pr)
+            pr_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_pr)
             svg_parts.append(
                 f'<polyline points="{pr_str}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,2"/>'
             )
