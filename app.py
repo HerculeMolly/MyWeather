@@ -511,14 +511,14 @@ with col_logo:
         )
 
 
-# 7. Synchronized SVG Chart Builder (Filled Areas Restored)
+# 7. Synchronized SVG Chart Builder (Expanded Strip Height: STRIP_H = 96)
 def render_svg_dashboard():
     W = 360  
     PAD_L = 6
     PAD_R = 6
     PLOT_W = W - PAD_L - PAD_R
     HEADER_H = 18
-    STRIP_H = 74
+    STRIP_H = 96  # Increased vertical space per graph strip
 
     active = st.session_state.active_charts
     if not active:
@@ -529,7 +529,6 @@ def render_svg_dashboard():
     def x_pos(i):
         return PAD_L + (i / 24.0) * PLOT_W
 
-    # Nighttime Shading Rectangles
     sr_h = sunrise_hours[0]
     ss_h = sunset_hours[0]
     night_rects = []
@@ -586,8 +585,8 @@ def render_svg_dashboard():
     for row_idx, metric in enumerate(active):
         y0 = HEADER_H + row_idx * STRIP_H
         y1 = y0 + STRIP_H
-        top_pad = y0 + 10
-        bot_pad = y1 - 8
+        top_pad = y0 + 12
+        bot_pad = y1 - 10
 
         for nx1, nx2 in night_rects:
             svg_parts.append(
@@ -610,7 +609,6 @@ def render_svg_dashboard():
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
-            # Translucent terracotta fill under Temp curve
             area_str = (
                 f"M {pts_t[0][0]:.1f},{bot_pad} "
                 + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t)
@@ -642,7 +640,7 @@ def render_svg_dashboard():
                 f'<circle cx="{icon_x+9}" cy="{y0+12}" r="4" fill="none" stroke="#ffffff" stroke-width="1.4"/>'
             )
             mid_t = round((max_t + min_t) / 2)
-            for val_lbl, yp_lbl in [(max_t, y0 + 11), (mid_t, y0 + 40), (min_t, y1 - 4)]:
+            for val_lbl, yp_lbl in [(max_t, y0 + 12), (mid_t, y0 + STRIP_H / 2 + 3), (min_t, y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}°</text>'
                 )
@@ -653,7 +651,6 @@ def render_svg_dashboard():
             mms = slice_data["precip_mm"]
             pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
 
-            # Translucent blue fill under Precipitation probability
             area_str = (
                 f"M {pts_p[0][0]:.1f},{bot_pad} "
                 + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p)
@@ -688,7 +685,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="#ffffff" stroke-width="1.4"/>'
             )
-            for val_lbl, yp_lbl in [("100", y0 + 11), ("50", y0 + 40), ("0", y1 - 4)]:
+            for val_lbl, yp_lbl in [("100", y0 + 12), ("50", y0 + STRIP_H / 2 + 3), ("0", y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
                 )
@@ -737,7 +734,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} M {icon_x+3},{y0+13} H {icon_x+15} M {icon_x+3},{y0+17} H {icon_x+10}" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>'
             )
-            for val_lbl, yp_lbl in [(max_w, y0 + 11), (round(max_w / 2), y0 + 40), (0, y1 - 4)]:
+            for val_lbl, yp_lbl in [(max_w, y0 + 12), (round(max_w / 2), y0 + STRIP_H / 2 + 3), (0, y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
                 )
@@ -769,7 +766,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="#ffffff"/>'
             )
-            for val_lbl, yp_lbl in [(max_v, y0 + 11), (round(max_v / 2), y0 + 40), (0, y1 - 4)]:
+            for val_lbl, yp_lbl in [(max_v, y0 + 12), (round(max_v / 2), y0 + STRIP_H / 2 + 3), (0, y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
                 )
@@ -795,7 +792,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<text x="{icon_x+9}" y="{y0+15}" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">%</text>'
             )
-            for val_lbl, yp_lbl in [("100", y0 + 11), ("50", y0 + 40), ("0", y1 - 4)]:
+            for val_lbl, yp_lbl in [("100", y0 + 12), ("50", y0 + STRIP_H / 2 + 3), ("0", y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
                 )
@@ -820,7 +817,7 @@ def render_svg_dashboard():
             svg_parts.append(
                 f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="#ffffff" text-anchor="middle">UV</text>'
             )
-            for val_lbl, yp_lbl in [(max_u, y0 + 11), (round(max_u / 2), y0 + 40), (0, y1 - 4)]:
+            for val_lbl, yp_lbl in [(max_u, y0 + 12), (round(max_u / 2), y0 + STRIP_H / 2 + 3), (0, y1 - 4)]:
                 svg_parts.append(
                     f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
                 )
