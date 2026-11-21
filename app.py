@@ -249,22 +249,22 @@ if data and "hourly" in data:
     # ==========================================
     st.markdown('<div class="weather-card">', unsafe_allow_html=True)
     st.markdown("**Temperature (°C)**")
-    st.html(temp_svg) if hasattr(st, "html") else st.write(temp_svg, unsafe_allow_html=True)
+    st.markdown(temp_svg, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="weather-card">', unsafe_allow_html=True)
     st.markdown(f"**Wind & Gusts ({st.session_state.wind_unit})**")
-    st.html(wind_svg) if hasattr(st, "html") else st.write(wind_svg, unsafe_allow_html=True)
+    st.markdown(wind_svg, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="weather-card">', unsafe_allow_html=True)
     st.markdown("**Precipitation (Probability & Intensity)**")
-    st.html(precip_svg) if hasattr(st, "html") else st.write(precip_svg, unsafe_allow_html=True)
+    st.markdown(precip_svg, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="weather-card">', unsafe_allow_html=True)
     st.markdown("**Humidity & Solar UV (0–100% Scale)**")
-    st.html(hum_uv_svg) if hasattr(st, "html") else st.write(hum_uv_svg, unsafe_allow_html=True)
+    st.markdown(hum_uv_svg, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
@@ -301,7 +301,7 @@ if data and "hourly" in data:
         </svg>
         """
         st.markdown(f'<div class="weather-card">**Visibility ({vis_unit})**', unsafe_allow_html=True)
-        st.html(vis_svg) if hasattr(st, "html") else st.write(vis_svg, unsafe_allow_html=True)
+        st.markdown(vis_svg, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
