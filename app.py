@@ -159,13 +159,13 @@ if data and "hourly" in data:
       <rect x="{pad_l}" y="{pad_t}" width="{plot_w}" height="{plot_h}" fill="#ffffff"/>
       {f'<line x1="{pad_l}" y1="{zero_y}" x2="{W-pad_r}" y2="{zero_y}" stroke="#4a90e2" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>' if zero_y else ''}
       <polyline fill="none" stroke="#e056fd" stroke-width="2" points="{temp_pts}"/>
-      <text x="{W - pad_r + 6}" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌡️ {bound_max}°</text>
-      <text x="{W - pad_r + 6}" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{(bound_max+bound_min)//2}°</text>
-      <text x="{W - pad_r + 6}" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">{bound_min}°</text>
+      <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌡️ {bound_max}°</text>
+      <text x="335" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{(bound_max+bound_min)//2}°</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">{bound_min}°</text>
     </svg>
     """
     
-    # 2. WIND CHART
+    # 2. WIND CHART (Left-side scale)
     max_w = max(max(wind_gst or [20]), 20)
     wind_max_scale = 20 * (int(max_w // 20) + 1)
     
@@ -187,7 +187,7 @@ if data and "hourly" in data:
     </svg>
     """
 
-    # 3. PRECIPITATION CHART (Fixed Y-Axis label positioning on the right)
+    # 3. PRECIPITATION CHART (Fixed right-side scale)
     max_p = max(max(precip_amt or [1.0]), 1.0)
     p_scale = 5 if max_p <= 5 else 10 * (int(max_p // 10) + 1)
     
@@ -202,6 +202,9 @@ if data and "hourly" in data:
     peak_px = get_x(peak_p_idx) if peak_p_idx is not None else 0
     peak_py = scale_p(peak_p_val) if peak_p_idx is not None else 0
 
+    mid_p_val = p_scale / 2
+    mid_p_str = f"{mid_p_val:g}"
+
     precip_svg = f"""
     <svg width="100%" height="{H}" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
       <polygon points="{precip_area}" fill="rgba(68, 108, 179, 0.2)" />
@@ -210,13 +213,13 @@ if data and "hourly" in data:
       <rect x="{peak_px - 16}" y="{peak_py - 16}" width="32" height="14" fill="#ffffff" rx="3" opacity="0.9"/>
       <text x="{peak_px}" y="{peak_py - 6}" font-size="9" font-weight="bold" fill="#2c3e50" text-anchor="middle" font-family="sans-serif">{peak_p_val:.1f}mm</text>
       ''' if peak_p_idx is not None and peak_p_val > 0.1 else ''}
-      <text x="{W - pad_r + 6}" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌧️ {p_scale}</text>
-      <text x="{W - pad_r + 6}" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{p_scale/2:g}</text>
-      <text x="{W - pad_r + 6}" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
+      <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">🌧️ {p_scale}</text>
+      <text x="335" y="{pad_t + plot_h/2 + 3}" font-size="10" fill="#666" font-family="sans-serif">{mid_p_str}</text>
+      <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
     </svg>
     """
 
-    # 4. COMBINED HUMIDITY & UV STRIP
+    # 4. COMBINED HUMIDITY & UV STRIP (Left-side scale)
     uv_scaled = [min(100, u * 8.3) for u in uv_raw]
     
     def scale_pct(val):
@@ -293,8 +296,8 @@ if data and "hourly" in data:
           <polyline fill="none" stroke="#16a085" stroke-width="2" points="{vis_pts}"/>
           <rect x="{min_x_pos - 16}" y="{min_line_y - 8}" width="32" height="16" fill="#ffffff" rx="3" opacity="0.9"/>
           <text x="{min_x_pos}" y="{min_line_y + 3}" font-size="9" font-weight="bold" fill="#c0392b" text-anchor="middle" font-family="sans-serif">{min_v:.1f}</text>
-          <text x="{W - pad_r + 6}" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">👁️ {v_max:.0f}</text>
-          <text x="{W - pad_r + 6}" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
+          <text x="335" y="{pad_t + 12}" font-size="10" fill="#666" font-family="sans-serif">👁️ {v_max:.0f}</text>
+          <text x="335" y="{pad_t + plot_h}" font-size="10" fill="#666" font-family="sans-serif">0</text>
         </svg>
         """
         st.markdown(f"""
