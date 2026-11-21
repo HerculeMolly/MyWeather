@@ -107,18 +107,20 @@ if data and "hourly" in data:
     window_slice = slice(current_idx, current_idx + 24)
     t_labels = times[window_slice]
     
-    temps = hourly["temperature_2m"][window_slice]
-    humidity = hourly["relative_humidity_2m"][window_slice]
-    precip_prob = hourly["precipitation_probability"][window_slice]
-    precip_amt = hourly["precipitation"][window_slice]
-    wind_spd = hourly["windspeed_10m"][window_slice]
-    wind_gst = hourly["windgusts_10m"][window_slice]
-    wind_dir = hourly["winddirection_10m"][window_slice]
-    visibility = hourly["visibility"][window_slice]  # in meters
-    uv_raw = hourly["uv_index"][window_slice]
-    pressure = hourly["surface_pressure"][window_slice]
+    # Helper to sanitize lists against unexpected API None values (prevents TypeErrors)
+    def clean_list(lst, default=0.0):
+        sliced = lst[window_slice] if lst else []
+        return [x if x is not None else default for x in sliced]
+
+    temps = clean_list(hourly.get("temperature_2m", []), 10.0)
+    humidity = clean_list(hourly.get("relative_humidity_2m", []), 50.0)
+    precip_amt = clean_list(hourly.get("precipitation", []), 0.0)
+    wind_spd = clean_list(hourly.get("windspeed_10m", []), 0.0)
+    wind_gst = clean_list(hourly.get("windgusts_10m", []), 0.0)
+    visibility = clean_list(hourly.get("visibility", []), 10000.0)
+    uv_raw = clean_list(hourly.get("uv_index", []), 0.0)
     
-    # Unit conversions for UK preference
+    # Unit conversions for UK preference safely
     if st.session_state.wind_unit == "mph":
         wind_spd = [s * 0.621371 for s in wind_spd]
         wind_gst = [g * 0.621371 for g in wind_gst]
@@ -144,15 +146,15 @@ if data and "hourly" in data:
     # ==========================================
     
     # 1. TEMPERATURE CHART (Snapped to 5-degree increments, 0°C freezing line)
-    min_t = min(temps)
-    max_t = max(temps)
+    min_t = min(temps) if temps else 0
+    max_t = max(temps) if temps else 10
     bound_min = 5 * (int(min_t // 5) - (1 if min_t < 0 else 0))
     bound_max = 5 * (int(max_t // 5) + 1)
     if bound_max - bound_min < 10:
         bound_max = bound_min + 10
         
     def scale_t(val):
-        return pad_t + plot_h - ((val - bound_min) / (bound_max - bound_min)) * plot_h
+        return pad_t + plot_h - ((val - bound_min) / max(1, bound_max - bound_min)) * plot_h
 
     temp_pts = " ".join([f"{get_x(i)},{scale_t(v):.1f}" for i, v in enumerate(temps)])
     zero_y = scale_t(0) if bound_min <= 0 <= bound_max else None
@@ -169,7 +171,7 @@ if data and "hourly" in data:
     """
     
     # 2. WIND CHART (Fixed zero-floor, shaded sustained fill, gust line above)
-    max_w = max(max(wind_gst), 20)
+    max_w = max(max(wind_gst or [20]), 20)
     wind_max_scale = 20 * (int(max_w // 20) + 1)
     
     def scale_w(val):
@@ -191,7 +193,7 @@ if data and "hourly" in data:
     """
 
     # 3. PRECIPITATION CHART (Shaded fill, peak mm with knockout background gap)
-    max_p = max(max(precip_amt), 1.0)
+    max_p = max(max(precip_amt or [1.0]), 1.0)
     p_scale = 5 if max_p <= 5 else 10 * (int(max_p // 10) + 1)
     
     def scale_p(val):
@@ -200,8 +202,8 @@ if data and "hourly" in data:
     precip_pts = " ".join([f"{get_x(i)},{scale_p(v):.1f}" for i, v in enumerate(precip_amt)])
     precip_area = f"{pad_l},{pad_t + plot_h} " + precip_pts + f" {W-pad_r},{pad_t + plot_h}"
     
-    peak_p_val = max(precip_amt)
-    peak_p_idx = precip_amt.index(peak_p_val) if peak_p_val > 0.1 else None
+    peak_p_val = max(precip_amt) if precip_amt else 0
+    peak_p_idx = precip_amt.index(peak_p_val) if peak_p_val > 0.1 and peak_p_val in precip_amt else None
     peak_px = get_x(peak_p_idx) if peak_p_idx is not None else 0
     peak_py = scale_p(peak_p_val) if peak_p_idx is not None else 0
 
@@ -276,9 +278,9 @@ if data and "hourly" in data:
         st.markdown("---")
         st.info("📂 **Additional Metrics Overlay Active** (Dimmed view of extra data)")
         
-        min_v = min(vis_vals)
-        min_v_idx = vis_vals.index(min_v)
-        v_max = max(max(vis_vals), 10)
+        min_v = min(vis_vals) if vis_vals else 10.0
+        min_v_idx = vis_vals.index(min_v) if min_v in vis_vals else 0
+        v_max = max(max(vis_vals or [10]), 10)
         
         def scale_v(val):
             return pad_t + plot_h - (val / v_max) * plot_h
