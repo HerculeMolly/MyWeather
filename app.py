@@ -24,10 +24,8 @@ if "unit_wind" not in st.session_state:
     st.session_state.unit_wind = "mph"
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
-if "active_charts" not in st.session_state:
-    st.session_state.active_charts = ["temp", "precip", "wind", "vis", "uv", "hum_press"]
-if "loc2" not in st.session_state:
-    st.session_state.loc2 = None
+if "show_overlay" not in st.session_state:
+    st.session_state.show_overlay = False
 
 # Primary Geolocation & Persistent State
 if "lat" in st.query_params and "lon" in st.query_params:
@@ -64,27 +62,22 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
-# 3. Lightweight Multilingual Dictionary (Settings & Guide Drawer Only)
+# 3. Lightweight Multilingual Dictionary
 TRANSLATIONS = {
     "en": {
         "drawer_title": "🌤️ Weather Guide & Location Settings",
         "loc1_head": "📍 Primary Location",
-        "loc2_head": "👨‍👩‍👧 2nd Location Overlay (Dotted Line)",
         "loc_placeholder": "UK Postcode, City, or Lat,Lon",
         "set_btn": "Set Location",
-        "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
-        "charts_head": "📊 Front Screen Charts & Order",
-        "units_head": "⚙️ Units & Language",
         "guide_md": """
 ---
 ### Physics & Everyman Guide
-* **Temperature:** Solid line shows actual air temperature with shaded fill; thinner line shows apparent temperature.
-* **Precipitation:** Shaded curve shows rain probability; peak mm value shown near the peak.
-* **Wind:** Sustained speed and gusts with direction arrows along top.
-* **Visibility:** Horizontal visibility tracking.
-* **PollenUV:** Daylight UV index tracking.
-* **HumidPressure:** Humidity and barometric pressure tracking.
+* **Graph1 (Temp):** Actual air temperature & feels like.
+* **Graph2 (Precipitation):** Rain probability & peak mm.
+* **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
+* **Graph4 (Visibility):** Horizontal visibility tracking.
+* **DropContents (Overlay):** Pollen/UV and Humidity/Pressure.
         """,
     }
 }
@@ -159,10 +152,6 @@ st.markdown(
         background-color: rgba(128, 128, 128, 0.03);
     }
 
-    .charts-desaturated {
-        filter: saturate(35%) opacity(0.75);
-    }
-
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -194,7 +183,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 5. Multi-Tier Weather Fetchers
+# 5. Weather Data Fetchers
 @st.cache_data(ttl=1800)
 def fetch_open_meteo(latitude, longitude):
     url = (
@@ -358,7 +347,6 @@ else:
     if not sunset_hours:
         sunset_hours = [17]
 
-# Unit Conversions
 if st.session_state.unit_temp == "F":
     slice_data["temp"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["temp"]]
     slice_data["feels"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["feels"]]
@@ -367,7 +355,7 @@ if st.session_state.unit_wind == "mph":
     slice_data["wind"] = [round(k * 0.621371, 1) for k in slice_data["wind"]]
     slice_data["gust"] = [round(k * 0.621371, 1) for k in slice_data["gust"]]
 
-# 6. Header Row
+# HEADER
 col_head, col_logo = st.columns([5, 1])
 badge_cls = "stale-badge" if is_stale else ""
 
@@ -395,8 +383,8 @@ with col_logo:
             unsafe_allow_html=True,
         )
 
-# 7. Synchronized SVG Chart Builder (All 6 Graphs + Fixed Dark Night Shading)
-def render_svg_dashboard():
+# RENDER CHARTS BUILDER FUNCTION (Reusable for Main Screen & Overlay)
+def build_svg_block(charts_to_render, is_overlay=False):
     W = 360  
     PAD_L = 6
     PAD_R = 6
@@ -404,8 +392,7 @@ def render_svg_dashboard():
     HEADER_H = 18
     STRIP_H = 96
 
-    active = st.session_state.active_charts
-    TOTAL_H = HEADER_H + len(active) * STRIP_H
+    TOTAL_H = HEADER_H + len(charts_to_render) * STRIP_H
 
     def x_pos(i):
         return PAD_L + (i / 24.0) * PLOT_W
@@ -438,7 +425,6 @@ def render_svg_dashboard():
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
     ]
 
-    # Header Time Axis Row
     svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
     svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
     for i in range(0, 25, 4):
@@ -457,20 +443,19 @@ def render_svg_dashboard():
             pts.append((xp, yp))
         return pts
 
-    for row_idx, metric in enumerate(active):
+    for row_idx, metric in enumerate(charts_to_render):
         y0 = HEADER_H + row_idx * STRIP_H
         y1 = y0 + STRIP_H
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
-        # Reliable Nighttime Shading (Darker tint visible on both white and black themes)
         for nx1, nx2 in night_rects:
             svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>')
 
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
 
-        # --- GRAPH 1: TEMP ---
+        # GRAPH 1 (TEMP)
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
             min_t = math.floor(min(all_t) - 2)
@@ -488,7 +473,6 @@ def render_svg_dashboard():
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
             svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.1"/>')
 
-            # 24h High & Low tags
             max_val, min_val = max(slice_data["temp"]), min(slice_data["temp"])
             max_idx = slice_data["temp"].index(max_val)
             min_idx = slice_data["temp"].index(min_val)
@@ -502,7 +486,7 @@ def render_svg_dashboard():
             svg_parts.append(f'<rect x="{pts_t[min_idx][0]-12}" y="{pts_t[min_idx][1]+3}" width="24" height="12" fill="rgba(255,255,255,0.85)" rx="2"/>')
             svg_parts.append(f'<text x="{pts_t[min_idx][0]}" y="{pts_t[min_idx][1]+12}" font-size="8" font-weight="800" fill="#2563eb" text-anchor="middle">{int(min_val)}°</text>')
 
-        # --- GRAPH 2: PRECIPITATION ---
+        # GRAPH 2 (PRECIPITATION)
         elif metric == "precip":
             probs = slice_data["precip_prob"]
             mms = slice_data["precip_mm"]
@@ -524,7 +508,7 @@ def render_svg_dashboard():
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
             svg_parts.append(f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="currentColor" stroke-width="1.4"/>')
 
-        # --- GRAPH 3: WIND ---
+        # GRAPH 3 (WIND)
         elif metric == "wind":
             all_w = slice_data["wind"] + slice_data["gust"]
             max_w = max(25, math.ceil(max(all_w) / 10.0) * 10)
@@ -555,7 +539,7 @@ def render_svg_dashboard():
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
             svg_parts.append(f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} Q {icon_x+16},{y0+9} {icon_x+16},{y0+11} Q {icon_x+16},{y0+13} {icon_x+13},{y0+13}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>')
 
-        # --- GRAPH 4: VISIBILITY ---
+        # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
             max_v = max(20, math.ceil(max(slice_data["vis"]) / 5.0) * 5)
             pts_v = make_points(slice_data["vis"], 0, max_v, top_pad, bot_pad)
@@ -570,7 +554,7 @@ def render_svg_dashboard():
             svg_parts.append(f'<path d="M {icon_x+3},{y0+12} Q {icon_x+9},{y0+6} {icon_x+15},{y0+12} Q {icon_x+9},{y0+18} {icon_x+3},{y0+12} Z" fill="none" stroke="currentColor" stroke-width="1.3"/>')
             svg_parts.append(f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="currentColor"/>')
 
-        # --- GRAPH 5: POLLEN & UV ---
+        # GRAPH 5 (POLLEN & UV)
         elif metric == "uv":
             max_u = max(8, math.ceil(max(slice_data["uv"])))
             pts_u = make_points(slice_data["uv"], 0, max_u, top_pad, bot_pad)
@@ -582,7 +566,7 @@ def render_svg_dashboard():
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
             svg_parts.append(f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">UV</text>')
 
-        # --- GRAPH 6: HUMIDITY & PRESSURE ---
+        # GRAPH 6 (HUMIDITY & PRESSURE)
         elif metric == "hum_press":
             pts_h = make_points(slice_data["hum"], 0, 100, top_pad, bot_pad)
             p_vals = slice_data["press"]
@@ -605,7 +589,26 @@ def render_svg_dashboard():
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
     st.markdown(f'<div class="{wrapper_cls}">{"".join(svg_parts)}</div>', unsafe_allow_html=True)
 
-render_svg_dashboard()
+# ==========================================
+# MAIN SCREEN RENDER: GRAPH1 TO GRAPH4
+# ==========================================
+main_graphs = ["temp", "precip", "wind", "vis"]
+build_svg_block(main_graphs, is_overlay=False)
+
+# ==========================================
+# DROPBOX (TOGGLE BUTTON)
+# ==========================================
+if st.button("🔍 More Metrics (DropContents)", use_container_width=True):
+    st.session_state.show_overlay = not st.session_state.show_overlay
+    st.rerun()
+
+# ==========================================
+# DROPCONTENTS (OVERLAY: GRAPH5 & GRAPH6)
+# ==========================================
+if st.session_state.show_overlay:
+    st.markdown("📂 **DropContents Active (Overlay Metrics)**")
+    overlay_graphs = ["uv", "hum_press"]
+    build_svg_block(overlay_graphs, is_overlay=True)
 
 # Helper function to resolve locations
 def resolve_location_string(query_str):
@@ -629,7 +632,7 @@ def resolve_location_string(query_str):
         pass
     return None
 
-# 8. Settings Drawer
+# SETTINGS DRAWER
 with st.expander(T["drawer_title"]):
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
@@ -645,29 +648,9 @@ with st.expander(T["drawer_title"]):
             else:
                 st.error("Location not found.")
 
-    st.markdown(f"#### {T['charts_head']}")
-    chart_labels = {
-        "temp": "🌡️ Temp & Feels Like",
-        "precip": "💧 Precipitation (% & mm)",
-        "wind": "💨 Wind & Gusts",
-        "vis": "👁️ Visibility",
-        "uv": "☀️ Pollen & UV Index",
-        "hum_press": "🧭 Humidity & Pressure",
-    }
-    selected = st.multiselect(
-        "Select & order charts",
-        options=list(chart_labels.keys()),
-        default=st.session_state.active_charts,
-        format_func=lambda k: chart_labels[k],
-        label_visibility="collapsed",
-    )
-    if selected and selected != st.session_state.active_charts:
-        st.session_state.active_charts = selected
-        st.rerun()
-
     st.markdown(T["guide_md"])
 
-# 9. Footer Branding
+# FOOTER BRANDING
 st.markdown(
     """
     <div class="footer-container">
