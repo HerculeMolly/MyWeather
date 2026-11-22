@@ -211,30 +211,6 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* Floating Overlay Styles for DropContents */
-    .overlay-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.45);
-        z-index: 999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .overlay-panel {
-        background: var(--background-color, #ffffff);
-        border: 1px solid rgba(128, 128, 128, 0.4);
-        border-radius: 8px;
-        width: 92%;
-        max-width: 560px;
-        padding: 10px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        z-index: 1000;
-    }
-
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -728,43 +704,25 @@ build_svg_block(main_graphs)
 # ==========================================
 # DROPBOX (TOGGLE BUTTON)
 # ==========================================
-if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
-    st.session_state.show_overlay = True
-    st.rerun()
+if not st.session_state.show_overlay:
+    if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
+        st.session_state.show_overlay = True
+        st.rerun()
 
 
 # ==========================================
-# DROPCONTENTS (FLOATING OVERLAY PANEL)
+# DROPCONTENTS (CLEAN NATIVE MODAL OVERLAY)
 # ==========================================
+@st.dialog("📂 DropContents (Overlay)")
+def show_dropcontents_modal():
+    overlay_graphs = ["uv", "hum_press"]
+    build_svg_block(overlay_graphs)
+    if st.button("✕ Close Overlay", use_container_width=True):
+        st.session_state.show_overlay = False
+        st.rerun()
+
 if st.session_state.show_overlay:
-    # We render the overlay container using a modal-style layout
-    overlay_container = st.container()
-    with overlay_container:
-        st.markdown(
-            """
-            <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.5); z-index: 999; display: flex; align-items: center; justify-content: center;">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        # Using columns/expander or container simulation for the overlay box content
-        with st.container():
-            st.markdown(
-                """
-                <div style="background: var(--background-color, #1e1e1e); border: 1px solid rgba(128,128,128,0.5); padding: 12px; border-radius: 8px; margin-top: -350px; z-index: 1000; position: relative; max-width: 560px; margin-left: auto; margin-right: auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-weight: 800; font-size: 0.9rem;">📂 DropContents (Overlay)</span>
-                """,
-                unsafe_allow_html=True
-            )
-            if st.button("✕ Close Overlay", key="close_overlay_btn"):
-                st.session_state.show_overlay = False
-                st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-            overlay_graphs = ["uv", "hum_press"]
-            build_svg_block(overlay_graphs)
+    show_dropcontents_modal()
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
