@@ -702,16 +702,15 @@ build_svg_block(main_graphs)
 
 
 # ==========================================
-# DROPBOX (TOGGLE BUTTON)
+# DROPBOX (TOGGLE BUTTON - ALWAYS PERSISTENT)
 # ==========================================
-if not st.session_state.show_overlay:
-    if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
-        st.session_state.show_overlay = True
-        st.rerun()
+if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
+    st.session_state.show_overlay = not st.session_state.show_overlay
+    st.rerun()
 
 
 # ==========================================
-# DROPCONTENTS (CLEAN NATIVE MODAL OVERLAY)
+# DROPCONTENTS (STABLE OVERLAY MODAL PANEL)
 # ==========================================
 @st.dialog("📂 DropContents (Overlay)")
 def show_dropcontents_modal():
