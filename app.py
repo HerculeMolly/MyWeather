@@ -24,8 +24,10 @@ if "unit_wind" not in st.session_state:
     st.session_state.unit_wind = "mph"
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
-if "show_overlay" not in st.session_state:
-    st.session_state.show_overlay = False
+if "active_charts" not in st.session_state:
+    st.session_state.active_charts = ["temp", "precip", "wind", "vis"]
+if "loc2" not in st.session_state:
+    st.session_state.loc2 = None  # Dict: {"name": str, "lat": float, "lon": float}
 
 # Primary Geolocation & Persistent State
 if "lat" in st.query_params and "lon" in st.query_params:
@@ -45,6 +47,7 @@ if "lat" not in st.session_state:
                 st.session_state.lat = float(data["latitude"])
                 st.session_state.lon = float(data["longitude"])
                 st.session_state.city = data.get("city", data.get("region", "Current Location"))
+                # Auto-select metric wind outside UK/US
                 country_code = data.get("country_code", "GB")
                 if country_code not in ["GB", "US"]:
                     st.session_state.unit_wind = "km/h"
@@ -62,29 +65,93 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
-# 3. Lightweight Multilingual Dictionary
+# 3. Lightweight Multilingual Dictionary (Settings & Guide Drawer Only)
 TRANSLATIONS = {
     "en": {
         "drawer_title": "🌤️ Weather Guide & Location Settings",
         "loc1_head": "📍 Primary Location",
+        "loc2_head": "👨‍👩‍👧 2nd Location Overlay (Dotted Line)",
         "loc_placeholder": "UK Postcode, City, or Lat,Lon",
         "set_btn": "Set Location",
+        "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
+        "charts_head": "📊 Front Screen Charts & Order",
+        "units_head": "⚙️ Units & Language",
         "guide_md": """
 ---
 ### Physics & Everyman Guide
-* **Graph1 (Temp):** Actual air temperature & feels like.
-* **Graph2 (Precipitation):** Rain probability & peak mm.
-* **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
-* **Graph4 (Visibility):** Horizontal visibility tracking.
-* **DropContents (Overlay):** Pollen/UV and Humidity/Pressure.
+* **Temperature & Feels Like:** Solid terracotta line shows actual air temperature; thinner amber line shows apparent temperature factoring in wind chill and humidity.
+* **Precipitation (% & mm):** Shaded indigo curve shows rain probability; the number tucked under the peak shows maximum expected rainfall in millimeters.
+* **Wind & Gusts:** Bottom line shows sustained wind speed; upper line shows peak gusts. Arrows at the top indicate wind direction.
+* **Visibility:** Teal line tracks horizontal visibility in kilometers (helpful for fog or mist).
+* **Shaded Vertical Band:** Marks nighttime hours from sunset to sunrise.
         """,
-    }
+    },
+    "fr": {
+        "drawer_title": "🌤️ Guide Météo & Paramètres",
+        "loc1_head": "📍 Lieu Principal",
+        "loc2_head": "👨‍👩‍👧 2e Lieu Superposé (Ligne Pointillée)",
+        "loc_placeholder": "Ville ou Lat,Lon (ex: Paris)",
+        "set_btn": "Définir",
+        "clear_btn": "Effacer 2e Lieu",
+        "reset_btn": "Réinitialiser",
+        "charts_head": "📊 Graphiques & Ordre d'Affichage",
+        "units_head": "⚙️ Unités & Langue",
+        "guide_md": """
+---
+### Guide Physique & Pratique
+* **Température & Ressenti :** La ligne pleine indique la température réelle ; la ligne fine indique le ressenti avec le vent.
+* **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie ; le chiffre sous le pic indique les millimètres attendus.
+* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut, flèches de direction au sommet.
+* **Visibilité :** Ligne turquoise indiquant la visibilité horizontale en km.
+* **Bande Grise :** Heures de nuit du coucher au lever du soleil.
+        """,
+    },
+    "de": {
+        "drawer_title": "🌤️ Wetter-Guide & Einstellungen",
+        "loc1_head": "📍 Hauptstandort",
+        "loc2_head": "👨‍👩‍👧 2. Standort-Overlay (Gepunktet)",
+        "loc_placeholder": "Stadt oder Lat,Lon (z.B. Berlin)",
+        "set_btn": "Speichern",
+        "clear_btn": "2. Ort löschen",
+        "reset_btn": "Zurücksetzen",
+        "charts_head": "📊 Diagramme & Reihenfolge",
+        "units_head": "⚙️ Einheiten & Sprache",
+        "guide_md": """
+---
+### Physik & Kurz-Guide
+* **Temperatur & Gefühlt:** Durchgezogene Linie zeigt Lufttemperatur; dünne Linie zeigt gefühlte Temperatur.
+* **Niederschlag (% & mm):** Blaue Kurve zeigt Regenwahrscheinlichkeit; Wert unter der Spitze zeigt maximale Regenmenge in mm.
+* **Wind & Böen:** Untere Linie zeigt Mittelwind, obere Linie Böen, Pfeile oben zeigen Windrichtung.
+* **Sichtweite:** Türkise Linie zeigt horizontale Sichtweite in km.
+* **Grauer Bereich:** Nachtstunden von Sonnenuntergang bis Sonnenaufgang.
+        """,
+    },
+    "es": {
+        "drawer_title": "🌤️ Guía del Tiempo y Ajustes",
+        "loc1_head": "📍 Ubicación Principal",
+        "loc2_head": "👨‍👩‍👧 2ª Ubicación (Línea Punteada)",
+        "loc_placeholder": "Ciudad o Lat,Lon (ej. Madrid)",
+        "set_btn": "Guardar",
+        "clear_btn": "Quitar 2ª Ubicación",
+        "reset_btn": "Restablecer",
+        "charts_head": "📊 Gráficos y Orden en Pantalla",
+        "units_head": "⚙️ Unidades e Idioma",
+        "guide_md": """
+---
+### Guía Física y Práctica
+* **Temperatura y Sensación:** Línea sólida muestra temperatura real; línea fina muestra sensación térmica.
+* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia; el número bajo el pico indica milímetros máximos.
+* **Viento y Rachas:** Línea inferior muestra viento sostenido; superior muestra rachas; flechas indican dirección.
+* **Visibilidad:** Línea verde azulado muestra visibilidad horizontal en km.
+* **Franja Gris:** Horas nocturnas desde el atardecer hasta el amanecer.
+        """,
+    },
 }
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared CSS Architecture
+# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First)
 st.markdown(
     """
     <style>
@@ -152,6 +219,10 @@ st.markdown(
         background-color: rgba(128, 128, 128, 0.03);
     }
 
+    .charts-desaturated {
+        filter: saturate(35%) opacity(0.75);
+    }
+
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -178,12 +249,27 @@ st.markdown(
         opacity: 0.8;
         font-weight: 600;
     }
+    .instant-loader {
+        text-align: center;
+        padding: 1.5rem 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        opacity: 0.6;
+    }
+
+    @media (min-width: 768px) {
+        .block-container { max-width: 768px !important; padding-top: 1rem; }
+        .footer-container { padding-top: 4px; margin-top: 2px; }
+        .brand-name { font-size: 0.98rem !important; }
+        .brand-sub { font-size: 0.78rem !important; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# 5. Weather Data Fetchers
+
+# 5. Multi-Tier Weather Fetchers (Open-Meteo Primary -> Met Norway Fallback)
 @st.cache_data(ttl=1800)
 def fetch_open_meteo(latitude, longitude):
     url = (
@@ -196,6 +282,7 @@ def fetch_open_meteo(latitude, longitude):
     response = requests.get(url, headers=headers, timeout=6)
     response.raise_for_status()
     return response.json()
+
 
 @st.cache_data(ttl=1800)
 def fetch_met_norway(latitude, longitude):
@@ -219,6 +306,7 @@ def fetch_met_norway(latitude, longitude):
         rh = details.get("relative_humidity", 70.0)
         w_ms = details.get("wind_speed", 3.0)
         w_kmh = w_ms * 3.6
+        # Steadman apparent temperature approximation
         e_hpa = (rh / 100.0) * 6.105 * math.exp((17.27 * t_c) / (237.7 + t_c))
         app_c = t_c + 0.33 * e_hpa - 0.70 * w_ms - 4.00
 
@@ -254,6 +342,7 @@ def fetch_met_norway(latitude, longitude):
         "daily": {"sunrise": [], "sunset": []},
     }
 
+
 def get_weather_with_fallback(latitude, longitude):
     for attempt in range(1, 3):
         try:
@@ -265,8 +354,10 @@ def get_weather_with_fallback(latitude, longitude):
     except Exception:
         return None, True
 
+
 data, is_stale = get_weather_with_fallback(lat, lon)
 
+# Extract timezone & 24-hour rolling slice anchored to NOW
 tz_name = data.get("timezone", "Europe/London") if data else "Europe/London"
 try:
     tz = ZoneInfo(tz_name)
@@ -299,17 +390,12 @@ if is_stale or not data or "hourly" not in data:
 else:
     h_data = data["hourly"]
     all_times = h_data["time"]
-    
-    now_local = datetime.now()
+    current_hour_prefix = now.strftime("%Y-%m-%dT%H")
     start_idx = 0
-    for idx, t_str in enumerate(all_times):
-        try:
-            dt = datetime.fromisoformat(t_str.replace("Z", ""))
-            if dt >= now_local:
-                start_idx = max(0, idx - 1)
-                break
-        except Exception:
-            pass
+    for idx, t in enumerate(all_times):
+        if t.startswith(current_hour_prefix):
+            start_idx = idx
+            break
     end_idx = min(start_idx + 25, len(all_times))
 
     def get_slice(key, default_val=0.0):
@@ -334,6 +420,7 @@ else:
         "uv": get_slice("uv_index", 0.0),
     }
 
+    # Parse sunrise/sunset hours for grey night band
     sunrise_hours, sunset_hours = [], []
     daily = data.get("daily", {})
     for sr in daily.get("sunrise", []):
@@ -347,17 +434,55 @@ else:
     if not sunset_hours:
         sunset_hours = [17]
 
+# Optional 2nd Location Overlay Data
+slice_data_2 = None
+if st.session_state.loc2:
+    d2, stale2 = get_weather_with_fallback(st.session_state.loc2["lat"], st.session_state.loc2["lon"])
+    if d2 and "hourly" in d2 and not stale2:
+        h2 = d2["hourly"]
+        t2 = h2["time"]
+        # Align 2nd location to the exact same 24h index span
+        s_idx2 = min(start_idx if not is_stale else 0, max(0, len(t2) - 25))
+        e_idx2 = min(s_idx2 + 25, len(t2))
+
+        def get_slice2(key, default_val=0.0):
+            arr = h2.get(key, [default_val] * len(t2))
+            sliced = [arr[i] if arr[i] is not None else default_val for i in range(s_idx2, e_idx2)]
+            while len(sliced) < 25:
+                sliced.append(sliced[-1] if sliced else default_val)
+            return sliced
+
+        slice_data_2 = {
+            "temp": get_slice2("temperature_2m", 15.0),
+            "precip_prob": get_slice2("precipitation_probability", 0),
+            "wind": get_slice2("wind_speed_10m", 10.0),
+            "vis": [round(v / 1000.0, 1) for v in get_slice2("visibility", 10000.0)],
+            "hum": get_slice2("relative_humidity_2m", 70),
+            "uv": get_slice2("uv_index", 0.0),
+        }
+
+# Unit Conversions
 if st.session_state.unit_temp == "F":
     slice_data["temp"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["temp"]]
     slice_data["feels"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["feels"]]
+    if slice_data_2:
+        slice_data_2["temp"] = [round(c * 9 / 5 + 32, 1) for c in slice_data_2["temp"]]
 
 if st.session_state.unit_wind == "mph":
     slice_data["wind"] = [round(k * 0.621371, 1) for k in slice_data["wind"]]
     slice_data["gust"] = [round(k * 0.621371, 1) for k in slice_data["gust"]]
+    if slice_data_2:
+        slice_data_2["wind"] = [round(k * 0.621371, 1) for k in slice_data_2["wind"]]
 
-# HEADER
+# 6. Header Row (Timestamp on same line + NOW anchor arrow + Refresh icon only)
 col_head, col_logo = st.columns([5, 1])
+
 badge_cls = "stale-badge" if is_stale else ""
+loc2_pill = (
+    f'<span style="font-size:0.68rem; opacity:0.75; margin-left:6px;">⋯ {st.session_state.loc2["name"]}</span>'
+    if st.session_state.loc2
+    else ""
+)
 
 with col_head:
     st.markdown(
@@ -367,7 +492,7 @@ with col_head:
             <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">↙ {timestamp_str}</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-            <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85;">📍 {city_name}</div>
+            <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85;">📍 {city_name}{loc2_pill}</div>
             <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85;">🔄</a>
         </div>
         """,
@@ -383,20 +508,26 @@ with col_logo:
             unsafe_allow_html=True,
         )
 
-# RENDER CHARTS BUILDER FUNCTION (Reusable for Main Screen & Overlay)
-def build_svg_block(charts_to_render, is_overlay=False):
-    W = 360  
+
+# 7. Synchronized SVG Chart Builder (Zero Words, High Contrast, Color-Blind Safe)
+def render_svg_dashboard():
+    W = 360  # Fixed internal SVG coordinate width (scales responsively to 100%)
     PAD_L = 6
     PAD_R = 6
     PLOT_W = W - PAD_L - PAD_R
     HEADER_H = 18
-    STRIP_H = 96
+    STRIP_H = 74
 
-    TOTAL_H = HEADER_H + len(charts_to_render) * STRIP_H
+    active = st.session_state.active_charts
+    if not active:
+        active = ["temp", "precip", "wind", "vis"]
+
+    TOTAL_H = HEADER_H + len(active) * STRIP_H
 
     def x_pos(i):
         return PAD_L + (i / 24.0) * PLOT_W
 
+    # Determine Nighttime Shading Rectangles (Sunset to Sunrise)
     sr_h = sunrise_hours[0]
     ss_h = sunset_hours[0]
     night_rects = []
@@ -414,26 +545,36 @@ def build_svg_block(charts_to_render, is_overlay=False):
     if in_night:
         night_rects.append((x_pos(n_start), x_pos(24)))
 
+    # Locate Midnight index for placing chart icons consistently under 0000
     midnight_x = x_pos(12)
     for i in range(25):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
+    # Clamp icon box so it never clips edges
     icon_x = max(PAD_L + 16, min(W - PAD_R - 42, midnight_x - 10))
 
     svg_parts = [
-        f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
+        f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">'
     ]
 
-    svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
-    svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
+    # Top Time Axis Row (Anchored at NOW on left)
+    svg_parts.append(
+        f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>'
+    )
+    svg_parts.append(
+        f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>'
+    )
     for i in range(0, 25, 4):
         lbl = slice_data["times"][i].split("T")[1].replace(":", "")
         xp = x_pos(i)
         anchor = "start" if i == 0 else ("end" if i == 24 else "middle")
         weight = "800" if i == 0 else "600"
-        svg_parts.append(f'<text x="{xp}" y="13" font-size="9.5" font-weight="{weight}" fill="currentColor" opacity="0.85" text-anchor="{anchor}">{lbl}</text>')
+        svg_parts.append(
+            f'<text x="{xp}" y="13" font-size="9.5" font-weight="{weight}" fill="currentColor" opacity="0.85" text-anchor="{anchor}">{lbl}</text>'
+        )
 
+    # Helper to build polyline & area points
     def make_points(vals, min_v, max_v, top_y, bot_y):
         span = max(max_v - min_v, 0.1)
         pts = []
@@ -443,88 +584,152 @@ def build_svg_block(charts_to_render, is_overlay=False):
             pts.append((xp, yp))
         return pts
 
-    for row_idx, metric in enumerate(charts_to_render):
+    # Render each selected metric strip
+    for row_idx, metric in enumerate(active):
         y0 = HEADER_H + row_idx * STRIP_H
         y1 = y0 + STRIP_H
-        top_pad = y0 + 12
-        bot_pad = y1 - 10
+        top_pad = y0 + 10
+        bot_pad = y1 - 8
 
+        # Nighttime light-grey vertical background bands
         for nx1, nx2 in night_rects:
-            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>')
+            svg_parts.append(
+                f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128,128,128,0.14)"/>'
+            )
 
+        # Horizontal divider line
         if row_idx > 0:
-            svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
+            svg_parts.append(
+                f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>'
+            )
 
-        # GRAPH 1 (TEMP)
+        # --- METRIC 1: TEMPERATURE & FEELS LIKE ---
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
+            if slice_data_2:
+                all_t += slice_data_2["temp"]
             min_t = math.floor(min(all_t) - 2)
             max_t = math.ceil(max(all_t) + 2)
 
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
-            area_str = f"M {pts_t[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t) + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(217, 72, 15, 0.16)"/>')
+            # Transparent terracotta fill under Temp
+            area_str = (
+                f"M {pts_t[0][0]:.1f},{bot_pad} "
+                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t)
+                + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
+            )
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(217, 72, 15, 0.14)"/>')
 
+            # Feels like line (Amber)
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
-            svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.85"/>')
+            svg_parts.append(
+                f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.85"/>'
+            )
 
+            # Primary Temp line (Terracotta)
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
-            svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.1"/>')
+            svg_parts.append(
+                f'<polyline points="{t_str}" fill="none" stroke="#c92a2a" stroke-width="2.1"/>'
+            )
 
-            max_val, min_val = max(slice_data["temp"]), min(slice_data["temp"])
-            max_idx = slice_data["temp"].index(max_val)
-            min_idx = slice_data["temp"].index(min_val)
-            
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<circle cx="{icon_x+9}" cy="{y0+12}" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/>')
-            
-            svg_parts.append(f'<rect x="{pts_t[max_idx][0]-12}" y="{pts_t[max_idx][1]-14}" width="24" height="12" fill="rgba(255,255,255,0.85)" rx="2"/>')
-            svg_parts.append(f'<text x="{pts_t[max_idx][0]}" y="{pts_t[max_idx][1]-5}" font-size="8" font-weight="800" fill="#c92a2a" text-anchor="middle">{int(max_val)}°</text>')
+            # 2nd Location Dotted Overlay (High-contrast Navy)
+            if slice_data_2:
+                pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
+                t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
+                svg_parts.append(
+                    f'<polyline points="{t2_str}" fill="none" stroke="#1e3a8a" stroke-width="1.4" stroke-dasharray="3,3"/>'
+                )
 
-            svg_parts.append(f'<rect x="{pts_t[min_idx][0]-12}" y="{pts_t[min_idx][1]+3}" width="24" height="12" fill="rgba(255,255,255,0.85)" rx="2"/>')
-            svg_parts.append(f'<text x="{pts_t[min_idx][0]}" y="{pts_t[min_idx][1]+12}" font-size="8" font-weight="800" fill="#2563eb" text-anchor="middle">{int(min_val)}°</text>')
+            # Icon & Scale under Midnight
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<circle cx="{icon_x+9}" cy="{y0+12}" r="4" fill="none" stroke="#ffffff" stroke-width="1.4"/>'
+            )
+            mid_t = round((max_t + min_t) / 2)
+            for val_lbl, yp_lbl in [(max_t, y0 + 11), (mid_t, y0 + 40), (min_t, y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}°</text>'
+                )
 
-        # GRAPH 2 (PRECIPITATION)
+        # --- METRIC 2: PRECIPITATION (% CHANCE & PEAK MM) ---
         elif metric == "precip":
             probs = slice_data["precip_prob"]
             mms = slice_data["precip_mm"]
             pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
 
-            area_str = f"M {pts_p[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p) + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.22)"/>')
+            area_str = (
+                f"M {pts_p[0][0]:.1f},{bot_pad} "
+                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p)
+                + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
+            )
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(29, 78, 216, 0.16)"/>')
 
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
-            svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
+            svg_parts.append(
+                f'<polyline points="{p_str}" fill="none" stroke="#1d4ed8" stroke-width="2"/>'
+            )
 
+            if slice_data_2:
+                pts_p2 = make_points(slice_data_2["precip_prob"], 0, 100, top_pad, bot_pad)
+                p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
+                svg_parts.append(
+                    f'<polyline points="{p2_str}" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-dasharray="3,3"/>'
+                )
+
+            # Peak mm label positioned directly beneath the actual peak
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
                 px, py = pts_p[peak_idx]
-                svg_parts.append(f'<rect x="{px-16}" y="{py-16}" width="32" height="13" fill="rgba(255,255,255,0.85)" rx="2"/>')
-                svg_parts.append(f'<text x="{px}" y="{py-7}" font-size="8" font-weight="800" fill="#1d4ed8" text-anchor="middle">{max_mm:.1f}mm</text>')
+                lbl_y = min(y1 - 4, max(y0 + 22, py + 13))
+                svg_parts.append(
+                    f'<text x="{px:.1f}" y="{lbl_y:.1f}" font-size="8.5" font-weight="800" fill="#1d4ed8" text-anchor="middle">{round(max_mm, 1)}</text>'
+                )
 
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="currentColor" stroke-width="1.4"/>')
+            # Droplet Icon & 100/50/0 Scale
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="#ffffff" stroke-width="1.4"/>'
+            )
+            for val_lbl, yp_lbl in [("100", y0 + 11), ("50", y0 + 40), ("0", y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
+                )
 
-        # GRAPH 3 (WIND)
+        # --- METRIC 3: WIND, GUSTS & DIRECTION ARROWS ---
         elif metric == "wind":
             all_w = slice_data["wind"] + slice_data["gust"]
+            if slice_data_2:
+                all_w += slice_data_2["wind"]
             max_w = max(25, math.ceil(max(all_w) / 10.0) * 10)
 
             pts_w = make_points(slice_data["wind"], 0, max_w, top_pad + 6, bot_pad)
             pts_g = make_points(slice_data["gust"], 0, max_w, top_pad + 6, bot_pad)
 
-            w_area = f"M {pts_w[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_w) + f" L {pts_w[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{w_area}" fill="rgba(100,100,100,0.1)"/>')
-
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
-            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>')
+            svg_parts.append(
+                f'<polyline points="{g_str}" fill="none" stroke="#64748b" stroke-width="1.3"/>'
+            )
 
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
-            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="currentColor" stroke-width="2"/>')
+            svg_parts.append(
+                f'<polyline points="{w_str}" fill="none" stroke="#0f172a" stroke-width="2"/>'
+            )
 
+            if slice_data_2:
+                pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad + 6, bot_pad)
+                w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
+                svg_parts.append(
+                    f'<polyline points="{w2_str}" fill="none" stroke="#b45309" stroke-width="1.4" stroke-dasharray="3,3"/>'
+                )
+
+            # Wind direction arrows along top edge every 3 hours
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
@@ -536,81 +741,111 @@ def build_svg_block(charts_to_render, is_overlay=False):
                     f"</g>"
                 )
 
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} Q {icon_x+16},{y0+9} {icon_x+16},{y0+11} Q {icon_x+16},{y0+13} {icon_x+13},{y0+13}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>')
+            # Wind Icon & Scale
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} M {icon_x+3},{y0+13} H {icon_x+15} M {icon_x+3},{y0+17} H {icon_x+10}" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>'
+            )
+            for val_lbl, yp_lbl in [(max_w, y0 + 11), (round(max_w / 2), y0 + 40), (0, y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
+                )
 
-        # GRAPH 4 (VISIBILITY)
+        # --- METRIC 4: VISIBILITY ---
         elif metric == "vis":
-            max_v = max(20, math.ceil(max(slice_data["vis"]) / 5.0) * 5)
+            all_v = slice_data["vis"] + (slice_data_2["vis"] if slice_data_2 else [])
+            max_v = max(20, math.ceil(max(all_v) / 5.0) * 5)
             pts_v = make_points(slice_data["vis"], 0, max_v, top_pad, bot_pad)
 
-            v_area = f"M {pts_v[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_v) + f" L {pts_v[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{v_area}" fill="rgba(22, 160, 133, 0.15)"/>')
-
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
-            svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2"/>')
+            svg_parts.append(
+                f'<polyline points="{v_str}" fill="none" stroke="#0d9488" stroke-width="2"/>'
+            )
 
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<path d="M {icon_x+3},{y0+12} Q {icon_x+9},{y0+6} {icon_x+15},{y0+12} Q {icon_x+9},{y0+18} {icon_x+3},{y0+12} Z" fill="none" stroke="currentColor" stroke-width="1.3"/>')
-            svg_parts.append(f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="currentColor"/>')
+            if slice_data_2:
+                pts_v2 = make_points(slice_data_2["vis"], 0, max_v, top_pad, bot_pad)
+                v2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v2)
+                svg_parts.append(
+                    f'<polyline points="{v2_str}" fill="none" stroke="#1e3a8a" stroke-width="1.4" stroke-dasharray="3,3"/>'
+                )
 
-        # GRAPH 5 (POLLEN & UV)
-        elif metric == "uv":
-            max_u = max(8, math.ceil(max(slice_data["uv"])))
-            pts_u = make_points(slice_data["uv"], 0, max_u, top_pad, bot_pad)
-            area_u = f"M {pts_u[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_u) + f" L {pts_u[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_u}" fill="rgba(241, 196, 15, 0.22)"/>')
-            u_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_u)
-            svg_parts.append(f'<polyline points="{u_str}" fill="none" stroke="#f39c12" stroke-width="2"/>')
-            
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">UV</text>')
+            # Eye Icon & Scale
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<path d="M {icon_x+3},{y0+12} Q {icon_x+9},{y0+6} {icon_x+15},{y0+12} Q {icon_x+9},{y0+18} {icon_x+3},{y0+12} Z" fill="none" stroke="#ffffff" stroke-width="1.3"/>'
+            )
+            svg_parts.append(
+                f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="#ffffff"/>'
+            )
+            for val_lbl, yp_lbl in [(max_v, y0 + 11), (round(max_v / 2), y0 + 40), (0, y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
+                )
 
-        # GRAPH 6 (HUMIDITY & PRESSURE)
+        # --- METRIC 5: HUMIDITY & PRESSURE (DUAL AXIS) ---
         elif metric == "hum_press":
             pts_h = make_points(slice_data["hum"], 0, 100, top_pad, bot_pad)
             p_vals = slice_data["press"]
             min_pr, max_pr = min(p_vals) - 3, max(p_vals) + 3
             pts_pr = make_points(p_vals, min_pr, max_pr, top_pad, bot_pad)
 
-            h_area = f"M {pts_h[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_h) + f" L {pts_h[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{h_area}" fill="rgba(2, 132, 199, 0.15)"/>')
-
             h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
-            svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#0284c7" stroke-width="1.8"/>')
-            
+            svg_parts.append(
+                f'<polyline points="{h_str}" fill="none" stroke="#0284c7" stroke-width="1.8"/>'
+            )
             pr_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_pr)
-            svg_parts.append(f'<polyline points="{pr_str}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,2"/>')
-            
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
-            svg_parts.append(f'<text x="{icon_x+9}" y="{y0+15}" font-size="9" font-weight="800" fill="currentColor" text-anchor="middle">%</text>')
+            svg_parts.append(
+                f'<polyline points="{pr_str}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,2"/>'
+            )
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<text x="{icon_x+9}" y="{y0+15}" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">%</text>'
+            )
+            for val_lbl, yp_lbl in [("100", y0 + 11), ("50", y0 + 40), ("0", y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
+                )
+
+        # --- METRIC 6: UV INDEX ---
+        elif metric == "uv":
+            max_u = max(8, math.ceil(max(slice_data["uv"])))
+            pts_u = make_points(slice_data["uv"], 0, max_u, top_pad, bot_pad)
+            area_u = (
+                f"M {pts_u[0][0]:.1f},{bot_pad} "
+                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_u)
+                + f" L {pts_u[-1][0]:.1f},{bot_pad} Z"
+            )
+            svg_parts.append(f'<path d="{area_u}" fill="rgba(217, 119, 6, 0.18)"/>')
+            u_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_u)
+            svg_parts.append(
+                f'<polyline points="{u_str}" fill="none" stroke="#b45309" stroke-width="2"/>'
+            )
+            svg_parts.append(
+                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f2937"/>'
+            )
+            svg_parts.append(
+                f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="#ffffff" text-anchor="middle">UV</text>'
+            )
+            for val_lbl, yp_lbl in [(max_u, y0 + 11), (round(max_u / 2), y0 + 40), (0, y1 - 4)]:
+                svg_parts.append(
+                    f'<text x="{icon_x+22}" y="{yp_lbl}" font-size="8.5" font-weight="700" fill="currentColor" opacity="0.75">{val_lbl}</text>'
+                )
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
     st.markdown(f'<div class="{wrapper_cls}">{"".join(svg_parts)}</div>', unsafe_allow_html=True)
 
-# ==========================================
-# MAIN SCREEN RENDER: GRAPH1 TO GRAPH4
-# ==========================================
-main_graphs = ["temp", "precip", "wind", "vis"]
-build_svg_block(main_graphs, is_overlay=False)
 
-# ==========================================
-# DROPBOX (TOGGLE BUTTON)
-# ==========================================
-if st.button("🔍 More Metrics (DropContents)", use_container_width=True):
-    st.session_state.show_overlay = not st.session_state.show_overlay
-    st.rerun()
+render_svg_dashboard()
 
-# ==========================================
-# DROPCONTENTS (OVERLAY: GRAPH5 & GRAPH6)
-# ==========================================
-if st.session_state.show_overlay:
-    st.markdown("📂 **DropContents Active (Overlay Metrics)**")
-    overlay_graphs = ["uv", "hum_press"]
-    build_svg_block(overlay_graphs, is_overlay=True)
 
-# Helper function to resolve locations
+# Helper function to resolve UK Postcode, Global City, or Raw Coordinates
 def resolve_location_string(query_str):
     q = query_str.strip()
     if "," in q:
@@ -619,6 +854,14 @@ def resolve_location_string(query_str):
             return float(parts[0].strip()), float(parts[1].strip()), f"{parts[0].strip()}, {parts[1].strip()}"
         except ValueError:
             pass
+    try:
+        q_up = q.upper()
+        res = requests.get(f"https://api.postcodes.io/postcodes/{q_up}", timeout=3)
+        if res.status_code == 200 and res.json().get("result"):
+            r = res.json()["result"]
+            return r["latitude"], r["longitude"], f"{r.get('admin_district', q_up)} ({q_up})"
+    except Exception:
+        pass
     try:
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={q}&count=1&language=en&format=json"
         geo_res = requests.get(geo_url, timeout=3)
@@ -632,8 +875,10 @@ def resolve_location_string(query_str):
         pass
     return None
 
-# SETTINGS DRAWER
+
+# 8. Integrated Guide, Multi-Location, Chart Order & Language Settings Drawer
 with st.expander(T["drawer_title"]):
+    # Primary Location Search
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
         q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -648,9 +893,81 @@ with st.expander(T["drawer_title"]):
             else:
                 st.error("Location not found.")
 
+    if st.session_state.city != "Peterborough":
+        if st.button(T["reset_btn"], use_container_width=True):
+            st.session_state.lat = 52.5785
+            st.session_state.lon = -0.1285
+            st.session_state.city = "Peterborough"
+            st.query_params.clear()
+            st.rerun()
+
+    # 2nd Family Location Overlay Search
+    st.markdown(f"#### {T['loc2_head']}")
+    with st.form(key="loc2_form"):
+        q2 = st.text_input("2nd Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
+        if st.form_submit_button(T["set_btn"], use_container_width=True) and q2:
+            res2 = resolve_location_string(q2)
+            if res2:
+                st.session_state.loc2 = {"lat": res2[0], "lon": res2[1], "name": res2[2]}
+                st.rerun()
+            else:
+                st.error("2nd Location not found.")
+
+    if st.session_state.loc2:
+        if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True):
+            st.session_state.loc2 = None
+            st.rerun()
+
+    # Front Screen Chart Selection & Ordering
+    st.markdown(f"#### {T['charts_head']}")
+    chart_labels = {
+        "temp": "🌡️ Temp & Feels Like",
+        "precip": "💧 Precipitation (% & mm)",
+        "wind": "💨 Wind & Gusts",
+        "vis": "👁️ Visibility",
+        "hum_press": "🧭 Humidity & Pressure",
+        "uv": "☀️ UV Index",
+    }
+    selected = st.multiselect(
+        "Select & order charts (order picked = display order)",
+        options=list(chart_labels.keys()),
+        default=st.session_state.active_charts,
+        format_func=lambda k: chart_labels[k],
+        label_visibility="collapsed",
+    )
+    if selected and selected != st.session_state.active_charts:
+        st.session_state.active_charts = selected
+        st.rerun()
+
+    # Units & Language Toggles
+    st.markdown(f"#### {T['units_head']}")
+    c_u1, c_u2, c_u3 = st.columns(3)
+    with c_u1:
+        t_choice = st.selectbox("Temp", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1)
+        if t_choice != st.session_state.unit_temp:
+            st.session_state.unit_temp = t_choice
+            st.rerun()
+    with c_u2:
+        w_choice = st.selectbox("Wind", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1)
+        if w_choice != st.session_state.unit_wind:
+            st.session_state.unit_wind = w_choice
+            st.rerun()
+    with c_u3:
+        lang_keys = ["en", "fr", "de", "es"]
+        l_choice = st.selectbox(
+            "Lang",
+            lang_keys,
+            index=lang_keys.index(st.session_state.lang),
+            format_func=lambda x: x.upper(),
+        )
+        if l_choice != st.session_state.lang:
+            st.session_state.lang = l_choice
+            st.rerun()
+
+    # Physics & Everyman Guide
     st.markdown(T["guide_md"])
 
-# FOOTER BRANDING
+# 9. Footer Branding (Identical to WashDry)
 st.markdown(
     """
     <div class="footer-container">
