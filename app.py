@@ -211,6 +211,30 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
+    /* Floating Overlay Styles for DropContents */
+    .overlay-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.45);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .overlay-panel {
+        background: var(--background-color, #ffffff);
+        border: 1px solid rgba(128, 128, 128, 0.4);
+        border-radius: 8px;
+        width: 92%;
+        max-width: 560px;
+        padding: 10px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -237,13 +261,6 @@ st.markdown(
         opacity: 0.8;
         font-weight: 600;
     }
-    .instant-loader {
-        text-align: center;
-        padding: 1.5rem 0;
-        font-size: 0.85rem;
-        font-weight: 600;
-        opacity: 0.6;
-    }
 
     @media (min-width: 768px) {
         .block-container { max-width: 768px !important; padding-top: 1rem; }
@@ -257,7 +274,7 @@ st.markdown(
 )
 
 
-# 5. Multi-Tier Weather Fetchers (Open-Meteo Primary -> Met Norway Fallback)
+# 5. Multi-Tier Weather Fetchers
 @st.cache_data(ttl=1800)
 def fetch_open_meteo(latitude, longitude):
     url = (
@@ -344,7 +361,6 @@ def get_weather_with_fallback(latitude, longitude):
 
 data, is_stale = get_weather_with_fallback(lat, lon)
 
-# Extract timezone & 24-hour rolling slice anchored to NOW
 tz_name = data.get("timezone", "Europe/London") if data else "Europe/London"
 try:
     tz = ZoneInfo(tz_name)
@@ -407,7 +423,6 @@ else:
         "uv": get_slice("uv_index", 0.0),
     }
 
-    # Parse sunrise/sunset hours for grey night band
     sunrise_hours, sunset_hours = [], []
     daily = data.get("daily", {})
     for sr in daily.get("sunrise", []):
@@ -421,7 +436,6 @@ else:
     if not sunset_hours:
         sunset_hours = [17]
 
-# Optional 2nd Location Overlay Data
 slice_data_2 = None
 if st.session_state.loc2:
     d2, stale2 = get_weather_with_fallback(st.session_state.loc2["lat"], st.session_state.loc2["lon"])
@@ -447,7 +461,6 @@ if st.session_state.loc2:
             "uv": get_slice2("uv_index", 0.0),
         }
 
-# Unit Conversions
 if st.session_state.unit_temp == "F":
     slice_data["temp"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["temp"]]
     slice_data["feels"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["feels"]]
@@ -460,7 +473,7 @@ if st.session_state.unit_wind == "mph":
     if slice_data_2:
         slice_data_2["wind"] = [round(k * 0.621371, 1) for k in slice_data_2["wind"]]
 
-# 6. Header Row (Timestamp on same line + NOW anchor arrow + Refresh icon only)
+# 6. Header Row
 col_head, col_logo = st.columns([5, 1])
 
 badge_cls = "stale-badge" if is_stale else ""
@@ -495,21 +508,20 @@ with col_logo:
         )
 
 
-# 7. Synchronized SVG Chart Builder (Reusable for Graph1-Graph4 and DropContents Overlay)
+# 7. Synchronized SVG Chart Builder
 def build_svg_block(charts_to_render):
-    W = 360  # Fixed internal SVG coordinate width (scales responsively to 100%)
+    W = 360  
     PAD_L = 6
     PAD_R = 6
     PLOT_W = W - PAD_L - PAD_R
     HEADER_H = 18
-    STRIP_H = 96  # Expanded 15mm vertical height
+    STRIP_H = 96
 
     TOTAL_H = HEADER_H + len(charts_to_render) * STRIP_H
 
     def x_pos(i):
         return PAD_L + (i / 24.0) * PLOT_W
 
-    # Determine Nighttime Shading Rectangles (Sunset to Sunrise) - Fixed Darker Tint for Both Modes
     sr_h = sunrise_hours[0]
     ss_h = sunset_hours[0]
     night_rects = []
@@ -527,7 +539,6 @@ def build_svg_block(charts_to_render):
     if in_night:
         night_rects.append((x_pos(n_start), x_pos(24)))
 
-    # Locate Midnight index for placing chart icons consistently under 0000
     midnight_x = x_pos(12)
     for i in range(25):
         if slice_data["times"][i].endswith("T00:00"):
@@ -539,21 +550,14 @@ def build_svg_block(charts_to_render):
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
     ]
 
-    # Top Time Axis Row
-    svg_parts.append(
-        f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>'
-    )
-    svg_parts.append(
-        f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>'
-    )
+    svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
+    svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
     for i in range(0, 25, 4):
         lbl = slice_data["times"][i].split("T")[1].replace(":", "")
         xp = x_pos(i)
         anchor = "start" if i == 0 else ("end" if i == 24 else "middle")
         weight = "800" if i == 0 else "600"
-        svg_parts.append(
-            f'<text x="{xp}" y="13" font-size="9.5" font-weight="{weight}" fill="currentColor" opacity="0.85" text-anchor="{anchor}">{lbl}</text>'
-        )
+        svg_parts.append(f'<text x="{xp}" y="13" font-size="9.5" font-weight="{weight}" fill="currentColor" opacity="0.85" text-anchor="{anchor}">{lbl}</text>')
 
     def make_points(vals, min_v, max_v, top_y, bot_y):
         span = max(max_v - min_v, 0.1)
@@ -570,18 +574,13 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
-        # Reliable Darker Nighttime Shading
         for nx1, nx2 in night_rects:
-            svg_parts.append(
-                f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>'
-            )
+            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>')
 
         if row_idx > 0:
-            svg_parts.append(
-                f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>'
-            )
+            svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
 
-        # --- GRAPH 1: TEMP ---
+        # GRAPH 1 (TEMP)
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
             if slice_data_2:
@@ -592,81 +591,51 @@ def build_svg_block(charts_to_render):
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
-            area_str = (
-                f"M {pts_t[0][0]:.1f},{bot_pad} "
-                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t)
-                + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
-            )
+            area_str = f"M {pts_t[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t) + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(217, 72, 15, 0.16)"/>')
 
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
-            svg_parts.append(
-                f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.85"/>'
-            )
+            svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.85"/>')
 
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
-            svg_parts.append(
-                f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.1"/>'
-            )
+            svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.1"/>')
 
             if slice_data_2:
                 pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
-                svg_parts.append(
-                    f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3,3"/>'
-                )
+                svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3,3"/>')
 
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<circle cx="{icon_x+9}" cy="{y0+12}" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/>'
-            )
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<circle cx="{icon_x+9}" cy="{y0+12}" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/>')
 
-        # --- GRAPH 2: PRECIPITATION ---
+        # GRAPH 2 (PRECIPITATION)
         elif metric == "precip":
             probs = slice_data["precip_prob"]
             mms = slice_data["precip_mm"]
             pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
 
-            area_str = (
-                f"M {pts_p[0][0]:.1f},{bot_pad} "
-                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p)
-                + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
-            )
+            area_str = f"M {pts_p[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p) + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.22)"/>')
 
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
-            svg_parts.append(
-                f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>'
-            )
+            svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
 
             if slice_data_2:
                 pts_p2 = make_points(slice_data_2["precip_prob"], 0, 100, top_pad, bot_pad)
                 p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
-                svg_parts.append(
-                    f'<polyline points="{p2_str}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,3"/>'
-                )
+                svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,3"/>')
 
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
                 px, py = pts_p[peak_idx]
-                svg_parts.append(
-                    f'<rect x="{px-16}" y="{py-16}" width="32" height="13" fill="rgba(255,255,255,0.85)" rx="2"/>'
-                )
-                svg_parts.append(
-                    f'<text x="{px}" y="{py-7}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">{max_mm:.1f}mm</text>'
-                )
+                svg_parts.append(f'<rect x="{px-16}" y="{py-16}" width="32" height="13" fill="rgba(255,255,255,0.85)" rx="2"/>')
+                svg_parts.append(f'<text x="{px}" y="{py-7}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="currentColor" stroke-width="1.4"/>'
-            )
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<path d="M {icon_x+9},{y0+6} C {icon_x+9},{y0+6} {icon_x+14},{y0+12} {icon_x+14},{y0+14.5} A 5,5 0 1,1 {icon_x+4},{y0+14.5} C {icon_x+4},{y0+12} {icon_x+9},{y0+6} {icon_x+9},{y0+6} Z" fill="none" stroke="currentColor" stroke-width="1.4"/>')
 
-        # --- GRAPH 3: WIND ---
+        # GRAPH 3 (WIND)
         elif metric == "wind":
             all_w = slice_data["wind"] + slice_data["gust"]
             if slice_data_2:
@@ -677,21 +646,15 @@ def build_svg_block(charts_to_render):
             pts_g = make_points(slice_data["gust"], 0, max_w, top_pad + 6, bot_pad)
 
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
-            svg_parts.append(
-                f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>'
-            )
+            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>')
 
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
-            svg_parts.append(
-                f'<polyline points="{w_str}" fill="none" stroke="currentColor" stroke-width="2"/>'
-            )
+            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="currentColor" stroke-width="2"/>')
 
             if slice_data_2:
                 pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad + 6, bot_pad)
                 w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
-                svg_parts.append(
-                    f'<polyline points="{w2_str}" fill="none" stroke="#b45309" stroke-width="1.4" stroke-dasharray="3,3"/>'
-                )
+                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#b45309" stroke-width="1.4" stroke-dasharray="3,3"/>')
 
             for i in range(1, 24, 3):
                 ax = x_pos(i)
@@ -704,63 +667,39 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} M {icon_x+3},{y0+13} H {icon_x+15} M {icon_x+3},{y0+17} H {icon_x+10}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
-            )
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<path d="M {icon_x+3},{y0+9} H {icon_x+13} M {icon_x+3},{y0+13} H {icon_x+15} M {icon_x+3},{y0+17} H {icon_x+10}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>')
 
-        # --- GRAPH 4: VISIBILITY ---
+        # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
             all_v = slice_data["vis"] + (slice_data_2["vis"] if slice_data_2 else [])
             max_v = max(20, math.ceil(max(all_v) / 5.0) * 5)
             pts_v = make_points(slice_data["vis"], 0, max_v, top_pad, bot_pad)
 
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
-            svg_parts.append(
-                f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2"/>'
-            )
+            svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2"/>')
 
             if slice_data_2:
                 pts_v2 = make_points(slice_data_2["vis"], 0, max_v, top_pad, bot_pad)
                 v2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v2)
-                svg_parts.append(
-                    f'<polyline points="{v2_str}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,3"/>'
-                )
+                svg_parts.append(f'<polyline points="{v2_str}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,3"/>')
 
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<path d="M {icon_x+3},{y0+12} Q {icon_x+9},{y0+6} {icon_x+15},{y0+12} Q {icon_x+9},{y0+18} {icon_x+3},{y0+12} Z" fill="none" stroke="currentColor" stroke-width="1.3"/>'
-            )
-            svg_parts.append(
-                f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="currentColor"/>'
-            )
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<path d="M {icon_x+3},{y0+12} Q {icon_x+9},{y0+6} {icon_x+15},{y0+12} Q {icon_x+9},{y0+18} {icon_x+3},{y0+12} Z" fill="none" stroke="currentColor" stroke-width="1.3"/>')
+            svg_parts.append(f'<circle cx="{icon_x+9}" cy="{y0+12}" r="2" fill="currentColor"/>')
 
-        # --- GRAPH 5 (OVERLAY): UV INDEX ---
+        # GRAPH 5 (OVERLAY): UV INDEX
         elif metric == "uv":
             max_u = max(8, math.ceil(max(slice_data["uv"])))
             pts_u = make_points(slice_data["uv"], 0, max_u, top_pad, bot_pad)
-            area_u = (
-                f"M {pts_u[0][0]:.1f},{bot_pad} "
-                + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_u)
-                + f" L {pts_u[-1][0]:.1f},{bot_pad} Z"
-            )
+            area_u = f"M {pts_u[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_u) + f" L {pts_u[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_u}" fill="rgba(241, 196, 15, 0.22)"/>')
             u_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_u)
-            svg_parts.append(
-                f'<polyline points="{u_str}" fill="none" stroke="#f39c12" stroke-width="2"/>'
-            )
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">UV</text>'
-            )
+            svg_parts.append(f'<polyline points="{u_str}" fill="none" stroke="#f39c12" stroke-width="2"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<text x="{icon_x+9}" y="{y0+15}" font-size="8" font-weight="800" fill="currentColor" text-anchor="middle">UV</text>')
 
-        # --- GRAPH 6 (OVERLAY): HUMIDITY & PRESSURE ---
+        # GRAPH 6 (OVERLAY): HUMIDITY & PRESSURE
         elif metric == "hum_press":
             pts_h = make_points(slice_data["hum"], 0, 100, top_pad, bot_pad)
             p_vals = slice_data["press"]
@@ -768,19 +707,11 @@ def build_svg_block(charts_to_render):
             pts_pr = make_points(p_vals, min_pr, max_pr, top_pad, bot_pad)
 
             h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
-            svg_parts.append(
-                f'<polyline points="{h_str}" fill="none" stroke="#0284c7" stroke-width="1.8"/>'
-            )
+            svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#0284c7" stroke-width="1.8"/>')
             pr_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_pr)
-            svg_parts.append(
-                f'<polyline points="{pr_str}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,2"/>'
-            )
-            svg_parts.append(
-                f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>'
-            )
-            svg_parts.append(
-                f'<text x="{icon_x+9}" y="{y0+15}" font-size="9" font-weight="800" fill="currentColor" text-anchor="middle">%</text>'
-            )
+            svg_parts.append(f'<polyline points="{pr_str}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,2"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<text x="{icon_x+9}" y="{y0+15}" font-size="9" font-weight="800" fill="currentColor" text-anchor="middle">%</text>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
@@ -797,18 +728,43 @@ build_svg_block(main_graphs)
 # ==========================================
 # DROPBOX (TOGGLE BUTTON)
 # ==========================================
-if st.button("🔍 More Metrics (DropContents)", use_container_width=True):
-    st.session_state.show_overlay = not st.session_state.show_overlay
+if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
+    st.session_state.show_overlay = True
     st.rerun()
 
 
 # ==========================================
-# DROPCONTENTS (OVERLAY: GRAPH5 & GRAPH6)
+# DROPCONTENTS (FLOATING OVERLAY PANEL)
 # ==========================================
 if st.session_state.show_overlay:
-    st.markdown("📂 **DropContents Active (Overlay Metrics)**")
-    overlay_graphs = ["uv", "hum_press"]
-    build_svg_block(overlay_graphs)
+    # We render the overlay container using a modal-style layout
+    overlay_container = st.container()
+    with overlay_container:
+        st.markdown(
+            """
+            <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.5); z-index: 999; display: flex; align-items: center; justify-content: center;">
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        # Using columns/expander or container simulation for the overlay box content
+        with st.container():
+            st.markdown(
+                """
+                <div style="background: var(--background-color, #1e1e1e); border: 1px solid rgba(128,128,128,0.5); padding: 12px; border-radius: 8px; margin-top: -350px; z-index: 1000; position: relative; max-width: 560px; margin-left: auto; margin-right: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-weight: 800; font-size: 0.9rem;">📂 DropContents (Overlay)</span>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("✕ Close Overlay", key="close_overlay_btn"):
+                st.session_state.show_overlay = False
+                st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            overlay_graphs = ["uv", "hum_press"]
+            build_svg_block(overlay_graphs)
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
@@ -844,7 +800,6 @@ def resolve_location_string(query_str):
 
 # 8. Integrated Guide, Multi-Location & Settings Drawer
 with st.expander(T["drawer_title"]):
-    # Primary Location Search
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
         q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -867,7 +822,6 @@ with st.expander(T["drawer_title"]):
             st.query_params.clear()
             st.rerun()
 
-    # 2nd Family Location Overlay Search
     st.markdown(f"#### {T['loc2_head']}")
     with st.form(key="loc2_form"):
         q2 = st.text_input("2nd Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -884,7 +838,6 @@ with st.expander(T["drawer_title"]):
             st.session_state.loc2 = None
             st.rerun()
 
-    # Units & Language Toggles
     st.markdown(f"#### {T['units_head']}")
     c_u1, c_u2, c_u3 = st.columns(3)
     with c_u1:
@@ -909,11 +862,10 @@ with st.expander(T["drawer_title"]):
             st.session_state.lang = l_choice
             st.rerun()
 
-    # Physics & Everyman Guide
     st.markdown(T["guide_md"])
 
 
-# 9. Footer Branding
+# 9. Footer Branding (Always Fixed at Screen Bottom)
 st.markdown(
     """
     <div class="footer-container">
