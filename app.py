@@ -211,6 +211,18 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
+    /* True Overlay Wrapper: Absolute positioning directly over Graphs 1-4 */
+    .overlay-popup {
+        position: relative;
+        margin-top: -412px; /* Pulls overlay up to sit exactly over the main charts */
+        z-index: 999;
+        background-color: var(--background-color, #ffffff);
+        border: 2px solid rgba(128, 128, 128, 0.5);
+        border-radius: 6px;
+        padding: 4px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -243,6 +255,7 @@ st.markdown(
         .footer-container { padding-top: 4px; margin-top: 2px; }
         .brand-name { font-size: 0.98rem !important; }
         .brand-sub { font-size: 0.78rem !important; }
+        .overlay-popup { margin-top: -424px; }
     }
     </style>
     """,
@@ -710,15 +723,10 @@ if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
 
 
 # ==========================================
-# DROPCONTENTS (INSTANT REPLACE OVERLAY PANEL)
+# DROPCONTENTS (TRUE OVERLAY MODAL PANEL)
 # ==========================================
 if st.session_state.show_overlay:
-    st.markdown(
-        """
-        <div style="border: 2px solid rgba(128,128,128,0.5); padding: 8px; border-radius: 6px; margin-top: 4px; margin-bottom: 4px; background: rgba(128,128,128,0.06);">
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="overlay-popup">', unsafe_allow_html=True)
     
     col_lbl, col_btn = st.columns([5, 1])
     with col_lbl:
