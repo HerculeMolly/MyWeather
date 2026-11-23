@@ -211,22 +211,6 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* True Floating Overlay Wrapper */
-    .floating-overlay-container {
-        position: absolute;
-        top: 130px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 94%;
-        max-width: 560px;
-        background-color: var(--background-color, #1a1a1a);
-        border: 2px solid rgba(128, 128, 128, 0.6);
-        border-radius: 8px;
-        padding: 10px;
-        z-index: 9999;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-    }
-
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -726,12 +710,12 @@ if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
 
 
 # ==========================================
-# DROPCONTENTS (TRUE FLOATING OVERLAY PANEL)
+# DROPCONTENTS (INSTANT REPLACE OVERLAY PANEL)
 # ==========================================
 if st.session_state.show_overlay:
     st.markdown(
         """
-        <div class="floating-overlay-container">
+        <div style="border: 2px solid rgba(128,128,128,0.5); padding: 8px; border-radius: 6px; margin-top: 4px; margin-bottom: 4px; background: rgba(128,128,128,0.06);">
         """,
         unsafe_allow_html=True,
     )
