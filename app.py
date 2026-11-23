@@ -710,18 +710,21 @@ if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
 
 
 # ==========================================
-# DROPCONTENTS (STABLE OVERLAY MODAL PANEL)
+# DROPCONTENTS (CLEAN STABLE INLINE OVERLAY PANEL)
 # ==========================================
-@st.dialog("📂 DropContents (Overlay)")
-def show_dropcontents_modal():
+if st.session_state.show_overlay:
+    st.markdown("---")
+    c_title, c_close = st.columns([4, 1])
+    with c_title:
+        st.markdown("📂 **DropContents (Overlay)**")
+    with c_close:
+        if st.button("✕ Close", use_container_width=True, key="inline_close_overlay"):
+            st.session_state.show_overlay = False
+            st.rerun()
+    
     overlay_graphs = ["uv", "hum_press"]
     build_svg_block(overlay_graphs)
-    if st.button("✕ Close Overlay", use_container_width=True):
-        st.session_state.show_overlay = False
-        st.rerun()
-
-if st.session_state.show_overlay:
-    show_dropcontents_modal()
+    st.markdown("---")
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
