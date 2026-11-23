@@ -211,6 +211,22 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
+    /* True Floating Modal Overlay covering the center column */
+    .true-modal-overlay {
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 92%;
+        max-width: 560px;
+        background-color: var(--background-color, #1e1e1e);
+        border: 2px solid rgba(128, 128, 128, 0.6);
+        border-radius: 8px;
+        padding: 8px;
+        z-index: 99999;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    }
+
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -243,6 +259,7 @@ st.markdown(
         .footer-container { padding-top: 4px; margin-top: 2px; }
         .brand-name { font-size: 0.98rem !important; }
         .brand-sub { font-size: 0.78rem !important; }
+        .true-modal-overlay { max-width: 720px; }
     }
     </style>
     """,
@@ -702,7 +719,7 @@ build_svg_block(main_graphs)
 
 
 # ==========================================
-# DROPBOX (TOGGLE BUTTON - LOCKED POSITION)
+# DROPBOX (LOCKED TOGGLE BUTTON POSITION)
 # ==========================================
 toggle_label = "Hide Extra Metrics (DropBox)" if st.session_state.show_overlay else "🔍 More Metrics (DropBox)"
 if st.button(toggle_label, use_container_width=True):
@@ -711,18 +728,26 @@ if st.button(toggle_label, use_container_width=True):
 
 
 # ==========================================
-# DROPCONTENTS (EXPANDED BELOW BUTTON)
+# TRUE MODAL OVERLAY (FLOATS ABOVE GRAPHS 1-4)
 # ==========================================
 if st.session_state.show_overlay:
-    st.markdown(
-        """
-        <div style="border: 1px solid rgba(128,128,128,0.4); padding: 8px; border-radius: 6px; margin-top: 4px; margin-bottom: 4px; background: rgba(128,128,128,0.03);">
-            <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; opacity: 0.85;">📂 DropContents (Extra Metrics)</div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="true-modal-overlay">', unsafe_allow_html=True)
+    
+    col_lbl, col_btn = st.columns([5, 1])
+    with col_lbl:
+        st.markdown("📂 **DropContents (Overlay Active)**")
+    with col_btn:
+        if st.button("✕", key="close_overlay_x", use_container_width=True):
+            st.session_state.show_overlay = False
+            st.rerun()
+
     overlay_graphs = ["uv", "hum_press"]
     build_svg_block(overlay_graphs)
+    
+    if st.button("Close Overlay", use_container_width=True, key="close_overlay_full"):
+        st.session_state.show_overlay = False
+        st.rerun()
+        
     st.markdown("</div>", unsafe_allow_html=True)
 
 
