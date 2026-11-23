@@ -710,21 +710,32 @@ if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
 
 
 # ==========================================
-# DROPCONTENTS (CLEAN STABLE INLINE OVERLAY PANEL)
+# DROPCONTENTS (CLEAN INLINE TOGGLE OVERLAY)
 # ==========================================
 if st.session_state.show_overlay:
-    st.markdown("---")
-    c_title, c_close = st.columns([4, 1])
-    with c_title:
-        st.markdown("📂 **DropContents (Overlay)**")
-    with c_close:
-        if st.button("✕ Close", use_container_width=True, key="inline_close_overlay"):
+    st.markdown(
+        """
+        <div style="border: 1px dashed rgba(128,128,128,0.5); padding: 8px; border-radius: 6px; margin-top: 4px; margin-bottom: 4px; background: rgba(128,128,128,0.04);">
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    col_lbl, col_btn = st.columns([5, 1])
+    with col_lbl:
+        st.markdown("📂 **DropContents (Overlay Active)**")
+    with col_btn:
+        if st.button("✕", key="close_overlay_x", use_container_width=True):
             st.session_state.show_overlay = False
             st.rerun()
-    
+
     overlay_graphs = ["uv", "hum_press"]
     build_svg_block(overlay_graphs)
-    st.markdown("---")
+    
+    if st.button("Close Overlay", use_container_width=True, key="close_overlay_full"):
+        st.session_state.show_overlay = False
+        st.rerun()
+        
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
@@ -762,7 +773,7 @@ def resolve_location_string(query_str):
 with st.expander(T["drawer_title"]):
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
-        q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
+        q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_widgets=None, label_visibility="collapsed")
         if st.form_submit_button(T["set_btn"], use_container_width=True) and q1:
             res1 = resolve_location_string(q1)
             if res1:
