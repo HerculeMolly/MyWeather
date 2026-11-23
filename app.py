@@ -519,7 +519,7 @@ def build_svg_block(charts_to_render):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
-    icon_x = max(PAD_L + 16, min(W - PAD_R - 65, midnight_x - 14))
+    icon_x = max(PAD_L + 16, min(W - PAD_R - 70, midnight_x - 14))
 
     svg_parts = [
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
@@ -584,7 +584,7 @@ def build_svg_block(charts_to_render):
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values (enlarged +10%, weight 700, thin border)
+            # High and Low Temperature integer values (enlarged +10% more -> font size 11, width 38, height 15)
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -594,30 +594,30 @@ def build_svg_block(charts_to_render):
             hx, hy = pts_t[max_idx]
             lx, ly = pts_t[min_idx]
 
-            svg_parts.append(f'<rect x="{hx-17}" y="{hy-15}" width="34" height="14" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
+            svg_parts.append(f'<rect x="{hx-19}" y="{hy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
 
-            svg_parts.append(f'<rect x="{lx-17}" y="{ly+2}" width="34" height="14" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lx}" y="{ly+12}" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
+            svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator (Enlarged +10%, weight 700, thin border matching line color)
+            # Feels-like Max Difference Indicator (enlarged +10% more -> font size 11, width 42, height 16)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
             sign_str = "+" if max_diff > 0 else ""
             delta_label = f"{sign_str}{int(round(max_diff))}°"
-            text_y_pos = dy - 10 if max_diff >= 0 else dy + 16
+            text_y_pos = dy - 11 if max_diff >= 0 else dy + 17
 
-            svg_parts.append(f'<rect x="{dx-19}" y="{text_y_pos-10}" width="38" height="15" fill="#1f1f1f" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<rect x="{dx-21}" y="{text_y_pos-11}" width="42" height="16" fill="#1f1f1f" stroke="#d97706" stroke-width="1" rx="2"/>')
+            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
-                # Underline for negative values (larger minus appearance support)
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="2"/>')
+                # Underline for negative values
+                svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos+4}" x2="{dx+19}" y2="{text_y_pos+4}" stroke="#d97706" stroke-width="2"/>')
             else:
                 # Overline for positive values
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-12}" x2="{dx+17}" y2="{text_y_pos-12}" stroke="#ef4444" stroke-width="2"/>')
+                svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos-13}" x2="{dx+19}" y2="{text_y_pos-13}" stroke="#ef4444" stroke-width="2"/>')
 
             # Sun Logo & Units Displayed Immediately to the Right
             svg_parts.append(f'<g transform="translate({icon_x}, {y0+4})">')
