@@ -211,18 +211,6 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* True Overlay Wrapper: Absolute positioning directly over Graphs 1-4 */
-    .overlay-popup {
-        position: relative;
-        margin-top: -412px; /* Pulls overlay up to sit exactly over the main charts */
-        z-index: 999;
-        background-color: var(--background-color, #ffffff);
-        border: 2px solid rgba(128, 128, 128, 0.5);
-        border-radius: 6px;
-        padding: 4px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    }
-
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -255,7 +243,6 @@ st.markdown(
         .footer-container { padding-top: 4px; margin-top: 2px; }
         .brand-name { font-size: 0.98rem !important; }
         .brand-sub { font-size: 0.78rem !important; }
-        .overlay-popup { margin-top: -424px; }
     }
     </style>
     """,
@@ -708,42 +695,21 @@ def build_svg_block(charts_to_render):
 
 
 # ==========================================
-# MAIN SCREEN: 4 LOCKED GRAPHS (GRAPH1 - GRAPH4)
+# DYNAMIC VIEW: RENDER MAIN GRAPHS OR OVERLAY GRAPHS
 # ==========================================
-main_graphs = ["temp", "precip", "wind", "vis"]
-build_svg_block(main_graphs)
+if not st.session_state.show_overlay:
+    build_svg_block(["temp", "precip", "wind", "vis"])
+else:
+    build_svg_block(["uv", "hum_press"])
 
 
 # ==========================================
 # DROPBOX (TOGGLE BUTTON - ALWAYS PERSISTENT)
 # ==========================================
-if st.button("🔍 More Metrics (DropBox)", use_container_width=True):
+toggle_label = "Hide Extra Metrics (DropBox)" if st.session_state.show_overlay else "🔍 More Metrics (DropBox)"
+if st.button(toggle_label, use_container_width=True):
     st.session_state.show_overlay = not st.session_state.show_overlay
     st.rerun()
-
-
-# ==========================================
-# DROPCONTENTS (TRUE OVERLAY MODAL PANEL)
-# ==========================================
-if st.session_state.show_overlay:
-    st.markdown('<div class="overlay-popup">', unsafe_allow_html=True)
-    
-    col_lbl, col_btn = st.columns([5, 1])
-    with col_lbl:
-        st.markdown("📂 **DropContents (Overlay Active)**")
-    with col_btn:
-        if st.button("✕", key="close_overlay_x", use_container_width=True):
-            st.session_state.show_overlay = False
-            st.rerun()
-
-    overlay_graphs = ["uv", "hum_press"]
-    build_svg_block(overlay_graphs)
-    
-    if st.button("Close Overlay", use_container_width=True, key="close_overlay_full"):
-        st.session_state.show_overlay = False
-        st.rerun()
-        
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
@@ -849,7 +815,7 @@ st.markdown(
     """
     <div class="footer-container">
         <div>
-            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
+            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size:0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
         </div>
         <div class="brand-text">
             <a href="https://herculemolly.co.uk" target="_blank" class="brand-name">Hercule Molly</a>
