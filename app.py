@@ -773,7 +773,7 @@ def resolve_location_string(query_str):
 with st.expander(T["drawer_title"]):
     st.markdown(f"#### {T['loc1_head']}")
     with st.form(key="loc1_form"):
-        q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_widgets=None, label_visibility="collapsed")
+        q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
         if st.form_submit_button(T["set_btn"], use_container_width=True) and q1:
             res1 = resolve_location_string(q1)
             if res1:
