@@ -695,21 +695,35 @@ def build_svg_block(charts_to_render):
 
 
 # ==========================================
-# DYNAMIC VIEW: RENDER MAIN GRAPHS OR OVERLAY GRAPHS
+# MAIN SCREEN: 4 LOCKED GRAPHS (GRAPH1 - GRAPH4)
 # ==========================================
-if not st.session_state.show_overlay:
-    build_svg_block(["temp", "precip", "wind", "vis"])
-else:
-    build_svg_block(["uv", "hum_press"])
+main_graphs = ["temp", "precip", "wind", "vis"]
+build_svg_block(main_graphs)
 
 
 # ==========================================
-# DROPBOX (TOGGLE BUTTON - ALWAYS PERSISTENT)
+# DROPBOX (TOGGLE BUTTON - LOCKED POSITION)
 # ==========================================
 toggle_label = "Hide Extra Metrics (DropBox)" if st.session_state.show_overlay else "🔍 More Metrics (DropBox)"
 if st.button(toggle_label, use_container_width=True):
     st.session_state.show_overlay = not st.session_state.show_overlay
     st.rerun()
+
+
+# ==========================================
+# DROPCONTENTS (EXPANDED BELOW BUTTON)
+# ==========================================
+if st.session_state.show_overlay:
+    st.markdown(
+        """
+        <div style="border: 1px solid rgba(128,128,128,0.4); padding: 8px; border-radius: 6px; margin-top: 4px; margin-bottom: 4px; background: rgba(128,128,128,0.03);">
+            <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; opacity: 0.85;">📂 DropContents (Extra Metrics)</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    overlay_graphs = ["uv", "hum_press"]
+    build_svg_block(overlay_graphs)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
@@ -815,7 +829,7 @@ st.markdown(
     """
     <div class="footer-container">
         <div>
-            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size:0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
+            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
         </div>
         <div class="brand-text">
             <a href="https://herculemolly.co.uk" target="_blank" class="brand-name">Hercule Molly</a>
