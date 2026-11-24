@@ -597,22 +597,24 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
+            # Feels-like Max Difference Indicator with Bold Colored Arrow matching temp line (#e056fd)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
-            dx = max(PAD_L + 20, min(W - PAD_R - 20, dx))
-            sign_str = "+" if max_diff > 0 else ""
-            delta_label = f"{sign_str}{int(round(max_diff))}°"
+            dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
+            
+            arrow_char = "↑" if max_diff >= 0 else "↓"
+            delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
             text_y_pos = dy - 10 if max_diff >= 0 else dy + 15
 
-            svg_parts.append(f'<rect x="{dx-17}" y="{text_y_pos-9}" width="34" height="14" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="500" fill="#1f1f1f" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<rect x="{dx-19}" y="{text_y_pos-9}" width="38" height="14" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
+            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="600" fill="#e056fd" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
-                svg_parts.append(f'<line x1="{dx-15}" y1="{text_y_pos+3}" x2="{dx+15}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.5"/>')
+                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.5"/>')
             else:
-                svg_parts.append(f'<line x1="{dx-15}" y1="{text_y_pos-11}" x2="{dx+15}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.5"/>')
+                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-11}" x2="{dx+17}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.5"/>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
@@ -671,19 +673,15 @@ def build_svg_block(charts_to_render):
             pts_w = make_points(winds_raw, 0, max_w, top_pad, bot_pad)
             pts_g = make_points(gusts_raw, 0, max_w, top_pad, bot_pad)
 
-            # Shaded area under main wind speed line
             area_str = f"M {pts_w[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_w) + f" L {pts_w[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.12)"/>')
 
-            # Gust solid line (no badges)
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
             svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>')
 
-            # Main Wind Speed solid line
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
             svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
 
-            # High and Low Wind Speed integer values (prominent, weight 600)
             max_wind_val = max(winds_raw)
             min_wind_val = min(winds_raw)
             max_gust_val = max(gusts_raw)
@@ -703,7 +701,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
-            # Custom Wind Logo & Unit Box with 3 curly swirl lines (No direction arrows)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round">')
             svg_parts.append('<path d="M1 2 h8 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-1"/>')
@@ -712,7 +709,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
 
-            # Wind Warning Supporting Badge immediately below icon (triggers at >=35 mph / 56 km/h sustained or >=50 mph / 80 km/h gust)
             sust_thresh = 35.0 if st.session_state.unit_wind == "mph" else 56.0
             gust_thresh = 50.0 if st.session_state.unit_wind == "mph" else 80.0
             if max_wind_val >= sust_thresh or max_gust_val >= gust_thresh:
