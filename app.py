@@ -594,7 +594,6 @@ def build_svg_block(charts_to_render):
             hx = max(PAD_L + 22, min(W - PAD_R - 22, hx))
             lx = max(PAD_L + 22, min(W - PAD_R - 22, lx))
 
-            # Inline Black Pills with Red (#ef4444) borders centered on coordinates
             svg_parts.append(f'<rect x="{hx-19}" y="{hy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#ef4444" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{hx}" y="{hy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
 
@@ -648,7 +647,6 @@ def build_svg_block(charts_to_render):
             px_prob, py_prob = pts_p[max_prob_idx]
             px_prob = max(PAD_L + 22, min(W - PAD_R - 22, px_prob))
 
-            # Inline Black Pill with Blue (#2980b9) border centered on coordinate
             svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
 
@@ -670,7 +668,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
             svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
-        # GRAPH 3 (WIND — SLATE GREY #64748b)
+        # GRAPH 3 (WIND — SLATE GREY #64748b & LIGHT SLATE #94a3b8)
         elif metric == "wind":
             winds_raw = slice_data["wind"]
             gusts_raw = slice_data["gust"]
@@ -701,21 +699,48 @@ def build_svg_block(charts_to_render):
             max_gust_val = max(gusts_raw)
             max_wind = int(round(max_wind_val))
             min_wind = int(round(min_wind_val))
+            max_gust = int(round(max_gust_val))
             max_w_idx = winds_raw.index(max_wind_val)
             min_w_idx = winds_raw.index(min_wind_val)
+            max_g_idx = gusts_raw.index(max_gust_val)
 
             hwx, hwy = pts_w[max_w_idx]
             lwx, lwy = pts_w[min_w_idx]
             hwx = max(PAD_L + 22, min(W - PAD_R - 22, hwx))
             lwx = max(PAD_L + 22, min(W - PAD_R - 22, lwx))
 
-            # Inline Black Pills with Slate Grey (#64748b) borders centered on coordinates
+            # Inline Black Pills for Sustained High & Low
             svg_parts.append(f'<rect x="{hwx-21}" y="{hwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{hwx}" y="{hwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_wind}</text>')
 
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
+            # Check Warning Thresholds
+            sust_thresh = 35.0 if st.session_state.unit_wind == "mph" else 56.0
+            gust_thresh = 50.0 if st.session_state.unit_wind == "mph" else 80.0
+            is_wind_warning = (max_wind_val >= sust_thresh) or (max_gust_val >= gust_thresh)
+
+            if is_wind_warning:
+                # Standout high-contrast warning badge directly under the wind icon
+                warn_txt = f"⚠ G{max_gust}" if max_gust_val >= gust_thresh else f"⚠ {max_wind}"
+                svg_parts.append(f'<rect x="{icon_x - 4}" y="{y0+23}" width="44" height="14" fill="#f59e0b" stroke="#1f1f1f" stroke-width="0.9" rx="2.5"/>')
+                svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+33}" font-size="9" font-weight="800" fill="#1f1f1f" text-anchor="middle">{warn_txt}</text>')
+            else:
+                # Normal conditions: show supporting Gust pill with smart horizontal shift if clashing with High/Low
+                gx, gy = pts_g[max_g_idx]
+                gx = max(PAD_L + 20, min(W - PAD_R - 20, gx))
+
+                # Shift sideways if overlapping horizontally and vertically with High or Low pill
+                if abs(gx - hwx) < 44 and abs(gy - hwy) < 18:
+                    gx = hwx + 46 if (hwx + 46 <= W - PAD_R - 20) else hwx - 46
+                elif abs(gx - lwx) < 44 and abs(gy - lwy) < 18:
+                    gx = lwx + 46 if (lwx + 46 <= W - PAD_R - 20) else lwx - 46
+
+                svg_parts.append(f'<rect x="{gx-19}" y="{gy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.85" rx="2.5"/>')
+                svg_parts.append(f'<text x="{gx}" y="{gy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">G{max_gust}</text>')
+
+            # Wind Direction Arrows
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
@@ -736,13 +761,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M2 12 h6 c1.2 0 2 0.8 2 2 s-0.8 2 -2 2 h-0.5"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
-
-            sust_thresh = 35.0 if st.session_state.unit_wind == "mph" else 56.0
-            gust_thresh = 50.0 if st.session_state.unit_wind == "mph" else 80.0
-            if max_wind_val >= sust_thresh or max_gust_val >= gust_thresh:
-                warn_txt = f"⚠ G{int(round(max_gust_val))}" if max_gust_val >= gust_thresh else f"⚠ {max_wind}"
-                svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
-                svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32.5}" font-size="8.5" font-weight="500" fill="#1f1f1f" text-anchor="middle">{warn_txt}</text>')
 
         # GRAPH 4 (VISIBILITY — TEAL #16a085)
         elif metric == "vis":
@@ -800,7 +818,6 @@ def build_svg_block(charts_to_render):
             hvx = max(PAD_L + 22, min(W - PAD_R - 22, hvx))
             lvx = max(PAD_L + 22, min(W - PAD_R - 22, lvx))
 
-            # Inline Black Pills with Teal (#16a085) borders centered on coordinates
             svg_parts.append(f'<rect x="{hvx-19}" y="{hvy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#16a085" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{hvx}" y="{hvy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_int}</text>')
 
