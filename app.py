@@ -198,7 +198,7 @@ st.markdown(
     }
 
     .charts-wrapper {
-        border: 1px solid rgba(128, 128, 128, 0.55);
+        border: 1px solid rgba(128, 128, 128, 0.75);
         border-radius: 6px;
         overflow: hidden;
         margin-top: 3px;
@@ -553,7 +553,7 @@ def build_svg_block(charts_to_render):
         bot_pad = y1 - 10
 
         for nx1, nx2 in night_rects:
-            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>')
+            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.12)"/>')
 
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
@@ -709,38 +709,32 @@ def build_svg_block(charts_to_render):
             hwx = max(PAD_L + 22, min(W - PAD_R - 22, hwx))
             lwx = max(PAD_L + 22, min(W - PAD_R - 22, lwx))
 
-            # Inline Black Pills for Sustained High & Low
             svg_parts.append(f'<rect x="{hwx-21}" y="{hwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{hwx}" y="{hwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_wind}</text>')
 
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
-            # Check Warning Thresholds
             sust_thresh = 35.0 if st.session_state.unit_wind == "mph" else 56.0
             gust_thresh = 50.0 if st.session_state.unit_wind == "mph" else 80.0
             is_wind_warning = (max_wind_val >= sust_thresh) or (max_gust_val >= gust_thresh)
 
             if is_wind_warning:
-                # Standout high-contrast warning badge directly under the wind icon
                 warn_txt = f"⚠ G{max_gust}" if max_gust_val >= gust_thresh else f"⚠ {max_wind}"
                 svg_parts.append(f'<rect x="{icon_x - 4}" y="{y0+23}" width="44" height="14" fill="#f59e0b" stroke="#1f1f1f" stroke-width="0.9" rx="2.5"/>')
                 svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+33}" font-size="9" font-weight="800" fill="#1f1f1f" text-anchor="middle">{warn_txt}</text>')
             else:
-                # Normal conditions: show supporting Gust pill with smart horizontal shift if clashing with High/Low
                 gx, gy = pts_g[max_g_idx]
                 gx = max(PAD_L + 20, min(W - PAD_R - 20, gx))
 
-                # Shift sideways if overlapping horizontally and vertically with High or Low pill
                 if abs(gx - hwx) < 44 and abs(gy - hwy) < 18:
                     gx = hwx + 46 if (hwx + 46 <= W - PAD_R - 20) else hwx - 46
                 elif abs(gx - lwx) < 44 and abs(gy - lwy) < 18:
                     gx = lwx + 46 if (lwx + 46 <= W - PAD_R - 20) else lwx - 46
 
                 svg_parts.append(f'<rect x="{gx-19}" y="{gy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.85" rx="2.5"/>')
-                svg_parts.append(f'<text x="{gx}" y="{gy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">G{max_gust}</text>')
+                svg_parts.append(f'<text x="{gx}" y="{gy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">{max_gust}</text>')
 
-            # Wind Direction Arrows
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
@@ -945,12 +939,12 @@ with st.expander(T["drawer_title"]):
     st.markdown(f"#### {T['units_head']}")
     c_u1, c_u2, c_u3 = st.columns(3)
     with c_u1:
-        t_choice = st.selectbox("Temp", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1)
+        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1)
         if t_choice != st.session_state.unit_temp:
             st.session_state.unit_temp = t_choice
             st.rerun()
     with c_u2:
-        w_choice = st.selectbox("Wind", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1)
+        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1)
         if w_choice != st.session_state.unit_wind:
             st.session_state.unit_wind = w_choice
             st.rerun()
