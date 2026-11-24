@@ -210,6 +210,32 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
+    /* Strict Equal-Width Flex Row for Settings Selectboxes (No Wrap) */
+    .settings-row {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        width: 100%;
+        align-items: flex-end;
+        margin-bottom: 8px;
+    }
+    .settings-col {
+        flex: 1 1 0px;
+        min-width: 0;
+    }
+    .settings-col label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+        display: block;
+        opacity: 0.85;
+        white-space: nowrap;
+    }
+    .settings-col div[data-baseweb="select"] {
+        width: 100% !important;
+    }
+
     .footer-container {
         display: flex;
         justify-content: space-between;
@@ -937,25 +963,39 @@ with st.expander(T["drawer_title"]):
             st.rerun()
 
     st.markdown(f"#### {T['units_head']}")
-    # Adjusted column widths so °C/°F is wider, Language is shorter, and all 3 sit cleanly on one line
-    c_u1, c_u2, c_u3 = st.columns([1.3, 1.0, 0.9])
-    with c_u1:
-        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1)
+    
+    # Custom HTML Flexbox Container for strict single-line equal-width settings boxes
+    st.markdown(
+        f"""
+        <div class="settings-row">
+            <div class="settings-col" id="col-temp"></div>
+            <div class="settings-col" id="col-wind"></div>
+            <div class="settings-col" id="col-lang"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Render the selectboxes inside Streamlit columns mapped to the custom layout
+    sc1, sc2, sc3 = st.columns(3)
+    with sc1:
+        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
         if t_choice != st.session_state.unit_temp:
             st.session_state.unit_temp = t_choice
             st.rerun()
-    with c_u2:
-        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1)
+    with sc2:
+        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
         if w_choice != st.session_state.unit_wind:
             st.session_state.unit_wind = w_choice
             st.rerun()
-    with c_u3:
+    with sc3:
         lang_keys = ["en", "fr", "de", "es"]
         l_choice = st.selectbox(
             "Language",
             lang_keys,
             index=lang_keys.index(st.session_state.lang),
             format_func=lambda x: x.upper(),
+            key="sel_lang"
         )
         if l_choice != st.session_state.lang:
             st.session_state.lang = l_choice
