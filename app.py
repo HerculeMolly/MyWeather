@@ -210,24 +210,27 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* ==========================================
-       CUSTOM CSS GRID FOR SETTINGS ROW (NO WRAP)
-       ========================================== */
-    .settings-grid {
-        display: grid;
-        grid-template-columns: 1.4fr 1.0fr 0.8fr;
-        gap: 8px;
-        width: 100%;
-        align-items: start;
-        margin-bottom: 4px;
+    /* =======================================================
+       ULTIMATE STABLE SETTINGS FLEX ROW (PURE CSS OVERRIDE)
+       ======================================================= */
+    .st-key-settings_row {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        align-items: flex-end !important;
     }
-    .settings-grid [data-testid="stSelectbox"] {
+    .st-key-settings_row > div {
+        flex: 1 1 0px !important;
+        min-width: 0 !important;
         width: 100% !important;
     }
-    /* Prevent label wrapping and keep text clean */
-    .settings-grid label {
+    .st-key-settings_row label {
         white-space: nowrap !important;
-        font-size: 0.78rem !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        opacity: 0.85 !important;
     }
 
     .footer-container {
@@ -958,32 +961,31 @@ with st.expander(T["drawer_title"]):
 
     st.markdown(f"#### {T['units_head']}")
     
-    # Render settings inside a custom HTML grid container that enforces exact widths and zero wrapping
-    st.markdown('<div class="settings-grid">', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
-        if t_choice != st.session_state.unit_temp:
-            st.session_state.unit_temp = t_choice
-            st.rerun()
-    with c2:
-        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
-        if w_choice != st.session_state.unit_wind:
-            st.session_state.unit_wind = w_choice
-            st.rerun()
-    with c3:
-        lang_keys = ["en", "fr", "de", "es"]
-        l_choice = st.selectbox(
-            "Language",
-            lang_keys,
-            index=lang_keys.index(st.session_state.lang),
-            format_func=lambda x: x.upper(),
-            key="sel_lang"
-        )
-        if l_choice != st.session_state.lang:
-            st.session_state.lang = l_choice
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Targetable container for the 3 settings selectors
+    with st.container(key="settings_row"):
+        sc1, sc2, sc3 = st.columns(3)
+        with sc1:
+            t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
+            if t_choice != st.session_state.unit_temp:
+                st.session_state.unit_temp = t_choice
+                st.rerun()
+        with sc2:
+            w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
+            if w_choice != st.session_state.unit_wind:
+                st.session_state.unit_wind = w_choice
+                st.rerun()
+        with sc3:
+            lang_keys = ["en", "fr", "de", "es"]
+            l_choice = st.selectbox(
+                "Language",
+                lang_keys,
+                index=lang_keys.index(st.session_state.lang),
+                format_func=lambda x: x.upper(),
+                key="sel_lang"
+            )
+            if l_choice != st.session_state.lang:
+                st.session_state.lang = l_choice
+                st.rerun()
 
     st.markdown(T["guide_md"])
 
