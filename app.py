@@ -81,7 +81,7 @@ TRANSLATIONS = {
 * **Graph1 (Temp):** Actual air temperature & feels like.
 * **Graph2 (Precipitation):** Rain probability & peak mm.
 * **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
-* **Graph4 (Visibility):** Horizontal visibility tracking.
+* **Graph4 (Visibility):** Horizontal visibility tracking with 5km & 1km hazard markers.
         """,
     },
     "fr": {
@@ -138,7 +138,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First) with Refined Border Contrast
+# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First)
 st.markdown(
     """
     <style>
@@ -392,7 +392,7 @@ else:
         "wind": get_slice("wind_speed_10m", 10.0),
         "gust": get_slice("wind_gusts_10m", 15.0),
         "wind_dir": get_slice("wind_direction_10m", 180),
-        "vis": [round(v / 1000.0, 1) for v in get_slice("visibility", 10000.0)],
+        "vis": [round(v / 1000.0, 2) for v in get_slice("visibility", 10000.0)],
         "hum": get_slice("relative_humidity_2m", 70),
         "press": [round(p) for p in get_slice("surface_pressure", 1013)],
         "uv": get_slice("uv_index", 0.0),
@@ -431,7 +431,7 @@ if st.session_state.loc2:
             "temp": get_slice2("temperature_2m", 15.0),
             "precip_prob": get_slice2("precipitation_probability", 0),
             "wind": get_slice2("wind_speed_10m", 10.0),
-            "vis": [round(v / 1000.0, 1) for v in get_slice2("visibility", 10000.0)],
+            "vis": [round(v / 1000.0, 2) for v in get_slice2("visibility", 10000.0)],
             "hum": get_slice2("relative_humidity_2m", 70),
             "uv": get_slice2("uv_index", 0.0),
         }
@@ -746,9 +746,31 @@ def build_svg_block(charts_to_render):
 
             pts_v = make_points(vis_raw, 0, max_v, top_pad, bot_pad)
 
-            # Shaded area under main visibility line
+            # Threshold values (5 km caution, 1 km danger)
+            y_5 = bot_pad - (5.0 / max_v) * (bot_pad - top_pad)
+            y_1 = bot_pad - (1.0 / max_v) * (bot_pad - top_pad)
+
+            # Vertical Gradient Fill (userSpaceOnUse) for single-path robustness
+            grad_id = f"visGrad_{row_idx}"
+            stop_5 = max(0.0, min(1.0, (y_5 - top_pad) / max(bot_pad - top_pad, 1.0)))
+            stop_1 = max(stop_5, min(1.0, (y_1 - top_pad) / max(bot_pad - top_pad, 1.0)))
+
+            svg_parts.append(
+                f'<defs>'
+                f'<linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="0" y1="{top_pad}" x2="0" y2="{bot_pad}">'
+                f'<stop offset="0%" stop-color="#16a085" stop-opacity="0.14"/>'
+                f'<stop offset="{stop_5*100:.1f}%" stop-color="#16a085" stop-opacity="0.14"/>'
+                f'<stop offset="{stop_5*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
+                f'<stop offset="{stop_1*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
+                f'<stop offset="{stop_1*100:.1f}%" stop-color="#ef4444" stop-opacity="0.28"/>'
+                f'<stop offset="100%" stop-color="#ef4444" stop-opacity="0.28"/>'
+                f'</linearGradient>'
+                f'</defs>'
+            )
+
+            # Single unbroken shaded area path
             area_str = f"M {pts_v[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_v) + f" L {pts_v[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(22, 160, 133, 0.12)"/>')
+            svg_parts.append(f'<path d="{area_str}" fill="url(#{grad_id})"/>')
 
             # Main Visibility solid line
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
@@ -760,9 +782,11 @@ def build_svg_block(charts_to_render):
                 v2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v2)
                 svg_parts.append(f'<polyline points="{v2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Visibility values (prominent, weight 600)
+            # High and Low Visibility integer values (rounded to nearest integer)
             max_vis_val = max(vis_raw)
             min_vis_val = min(vis_raw)
+            max_vis_int = int(round(max_vis_val))
+            min_vis_int = int(round(min_vis_val))
             max_vis_idx = vis_raw.index(max_vis_val)
             min_vis_idx = vis_raw.index(min_vis_val)
 
@@ -771,11 +795,29 @@ def build_svg_block(charts_to_render):
             hvx = max(PAD_L + 22, min(W - PAD_R - 22, hvx))
             lvx = max(PAD_L + 22, min(W - PAD_R - 22, lvx))
 
-            svg_parts.append(f'<rect x="{hvx-21}" y="{hvy-16}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hvx}" y="{hvy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_val:.1f}</text>')
+            svg_parts.append(f'<rect x="{hvx-19}" y="{hvy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hvx}" y="{hvy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_int}</text>')
 
-            svg_parts.append(f'<rect x="{lvx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lvx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_val:.1f}</text>')
+            svg_parts.append(f'<rect x="{lvx-19}" y="{lwy+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lvx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_int}</text>')
+
+            # All-or-nothing 5 km & 1 km horizontal reference lines + smart side-placed supporting badges
+            if min_vis_val < 5.0:
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_5:.1f}" x2="{W-PAD_R}" y2="{y_5:.1f}" stroke="#d97706" stroke-width="1" stroke-dasharray="3,3" opacity="0.85"/>')
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_1:.1f}" x2="{W-PAD_R}" y2="{y_1:.1f}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" opacity="0.9"/>')
+
+                # Determine which side (left vs right) has more vertical clearance from the curve
+                left_clearance = abs(vis_raw[0] - 5.0) + abs(vis_raw[1] - 5.0)
+                right_clearance = abs(vis_raw[-1] - 5.0) + abs(vis_raw[-2] - 5.0)
+                badge_x = (PAD_L + 12) if left_clearance >= right_clearance else (W - PAD_R - 12)
+
+                # '5' Caution Supporting Badge
+                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_5-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#d97706" stroke-width="0.9" rx="2"/>')
+                svg_parts.append(f'<text x="{badge_x}" y="{y_5-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">5</text>')
+
+                # '1' Danger Supporting Badge
+                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_1-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
+                svg_parts.append(f'<text x="{badge_x}" y="{y_1-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">1</text>')
 
             # Custom Eye Logo & Unit Box
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
