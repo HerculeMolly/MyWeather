@@ -96,9 +96,9 @@ TRANSLATIONS = {
         "guide_md": """
 ---
 ### Guide Physique & Pratique
-* **Température & Ressenti :** La ligne pleine indique la température réelle ; la ligne fine indique le ressenti avec le vent.
-* **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie ; le chiffre sous le pic indique les millimètres attendus.
-* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut, flèches de direction au sommet.
+* **Température & Ressenti :** La ligne rouge indique la température réelle ; la ligne orange indique le ressenti.
+* **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie.
+* **Vent & Rafales :** Vitesse en gris ardoise, rafales en haut, flèches de direction.
 * **Visibilité :** Ligne turquoise indiquant la visibilité horizontale.
         """,
     },
@@ -114,8 +114,8 @@ TRANSLATIONS = {
         "guide_md": """
 ---
 ### Physik & Kurz-Guide
-* **Temperatur & Gefühlt:** Durchgezogene Linie zeigt Lufttemperatur; dünne Linie zeigt gefühlte Temperatur.
-* **Niederschlag (% & mm):** Blaue Kurve zeigt Regenwahrscheinlichkeit; Wert unter der Spitze zeigt maximale Regenmenge in mm.
+* **Temperatur & Gefühlt:** Rote Linie zeigt Lufttemperatur; orange Linie gefühlte Temperatur.
+* **Niederschlag (% & mm):** Blaue Kurve zeigt Regenwahrscheinlichkeit.
         """,
     },
     "es": {
@@ -130,8 +130,8 @@ TRANSLATIONS = {
         "guide_md": """
 ---
 ### Guía Física y Práctica
-* **Temperatura y Sensación:** Línea sólida muestra temperatura real; línea fina muestra sensación térmica.
-* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia; el valor bajo el pico indica milímetros máximos.
+* **Temperatura y Sensación:** Línea roja muestra temperatura real; línea fina naranja muestra sensación térmica.
+* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia.
         """,
     },
 }
@@ -447,7 +447,6 @@ if st.session_state.unit_wind == "mph":
     slice_data["gust"] = [round(k * 0.621371, 1) for k in slice_data["gust"]]
     if slice_data_2:
         slice_data_2["wind"] = [round(k * 0.621371, 1) for k in slice_data_2["wind"]]
-    # Convert visibility km to miles if imperial units active
     slice_data["vis"] = [round(v * 0.621371, 2) for v in slice_data["vis"]]
     if slice_data_2:
         slice_data_2["vis"] = [round(v * 0.621371, 2) for v in slice_data_2["vis"]]
@@ -559,7 +558,7 @@ def build_svg_block(charts_to_render):
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
-        # GRAPH 1 (TEMP)
+        # GRAPH 1 (TEMP — RED & ORANGE)
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
             if slice_data_2:
@@ -571,13 +570,13 @@ def build_svg_block(charts_to_render):
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
             area_str = f"M {pts_t[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t) + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(224, 86, 253, 0.12)"/>')
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(239, 68, 68, 0.12)"/>')
 
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
             svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.9"/>')
 
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
-            svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.2"/>')
+            svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#ef4444" stroke-width="2.2"/>')
 
             if slice_data_2:
                 pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
@@ -595,11 +594,12 @@ def build_svg_block(charts_to_render):
             hx = max(PAD_L + 22, min(W - PAD_R - 22, hx))
             lx = max(PAD_L + 22, min(W - PAD_R - 22, lx))
 
-            svg_parts.append(f'<rect x="{hx-19}" y="{hy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
+            # Inline Black Pills with Red (#ef4444) borders centered on coordinates
+            svg_parts.append(f'<rect x="{hx-19}" y="{hy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#ef4444" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hx}" y="{hy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
 
-            svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
+            svg_parts.append(f'<rect x="{lx-19}" y="{ly-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#ef4444" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lx}" y="{ly+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
@@ -612,14 +612,13 @@ def build_svg_block(charts_to_render):
             text_y_pos = dy - 10 if max_diff >= 0 else dy + 15
 
             svg_parts.append(f'<rect x="{dx-19}" y="{text_y_pos-9}" width="38" height="14" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="600" fill="#e056fd" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="600" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
                 svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.3"/>')
             else:
                 svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-11}" x2="{dx+17}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.3"/>')
 
-            # Refined icon lines (stroke-width 1.1, crisp vector path)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
@@ -627,7 +626,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
-        # GRAPH 2 (PRECIPITATION)
+        # GRAPH 2 (PRECIPITATION — BLUE)
         elif metric == "precip":
             probs = slice_data["precipitation_probability"] if "precipitation_probability" in slice_data else slice_data["precip_prob"]
             mms = slice_data["precipitation"] if "precipitation" in slice_data else slice_data["precip_mm"]
@@ -649,18 +648,18 @@ def build_svg_block(charts_to_render):
             px_prob, py_prob = pts_p[max_prob_idx]
             px_prob = max(PAD_L + 22, min(W - PAD_R - 22, px_prob))
 
-            svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{px_prob}" y="{py_prob-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
+            # Inline Black Pill with Blue (#2980b9) border centered on coordinate
+            svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
 
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
                 px_mm, py_mm = pts_p[peak_idx]
                 px_mm = max(PAD_L + 22, min(W - PAD_R - 22, px_mm))
-                svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+                svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            # Refined precipitation icon lines
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
@@ -671,7 +670,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
             svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
-        # GRAPH 3 (WIND)
+        # GRAPH 3 (WIND — SLATE GREY #64748b)
         elif metric == "wind":
             winds_raw = slice_data["wind"]
             gusts_raw = slice_data["gust"]
@@ -684,18 +683,18 @@ def build_svg_block(charts_to_render):
             pts_g = make_points(gusts_raw, 0, max_w, top_pad, bot_pad)
 
             area_str = f"M {pts_w[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_w) + f" L {pts_w[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.12)"/>')
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(100, 116, 139, 0.12)"/>')
 
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
-            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.2"/>')
+            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="#94a3b8" stroke-width="1.2"/>')
 
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
-            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
+            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#64748b" stroke-width="2.2"/>')
 
             if slice_data_2:
                 pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad, bot_pad)
                 w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
-                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
+                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#64748b" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             max_wind_val = max(winds_raw)
             min_wind_val = min(winds_raw)
@@ -710,11 +709,12 @@ def build_svg_block(charts_to_render):
             hwx = max(PAD_L + 22, min(W - PAD_R - 22, hwx))
             lwx = max(PAD_L + 22, min(W - PAD_R - 22, lwx))
 
-            svg_parts.append(f'<rect x="{hwx-21}" y="{hwy-16}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hwx}" y="{hwy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_wind}</text>')
+            # Inline Black Pills with Slate Grey (#64748b) borders centered on coordinates
+            svg_parts.append(f'<rect x="{hwx-21}" y="{hwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hwx}" y="{hwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_wind}</text>')
 
-            svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
+            svg_parts.append(f'<rect x="{lwx-21}" y="{lwy-7.5}" width="42" height="15" fill="#1f1f1f" stroke="#64748b" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lwx}" y="{lwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
             for i in range(1, 24, 3):
                 ax = x_pos(i)
@@ -724,12 +724,11 @@ def build_svg_block(charts_to_render):
                 deg = slice_data["wind_dir"][i]
                 svg_parts.append(
                     f'<g transform="translate({ax:.1f},{ay}) rotate({deg})">'
-                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="1.2"/>'
-                    f'<polyline points="-2,1.5 0,3.5 2,1.5" fill="none" stroke="#3b82f6" stroke-width="1.2"/>'
+                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#64748b" stroke-width="1.2"/>'
+                    f'<polyline points="-2,1.5 0,3.5 2,1.5" fill="none" stroke="#64748b" stroke-width="1.2"/>'
                     f"</g>"
                 )
 
-            # Refined wind logo lines (stroke-width 1.1)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round">')
             svg_parts.append('<path d="M1 2 h8 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-1"/>')
@@ -745,7 +744,7 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
                 svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32.5}" font-size="8.5" font-weight="500" fill="#1f1f1f" text-anchor="middle">{warn_txt}</text>')
 
-        # GRAPH 4 (VISIBILITY)
+        # GRAPH 4 (VISIBILITY — TEAL #16a085)
         elif metric == "vis":
             vis_raw = slice_data["vis"]
             all_v = vis_raw + (slice_data_2["vis"] if slice_data_2 else [])
@@ -753,7 +752,6 @@ def build_svg_block(charts_to_render):
 
             pts_v = make_points(vis_raw, 0, max_v, top_pad, bot_pad)
 
-            # Threshold values based on unit (mi vs km)
             is_miles = st.session_state.unit_wind == "mph"
             thresh_caution = 3.1 if is_miles else 5.0
             thresh_danger = 0.6 if is_miles else 1.0
@@ -802,11 +800,12 @@ def build_svg_block(charts_to_render):
             hvx = max(PAD_L + 22, min(W - PAD_R - 22, hvx))
             lvx = max(PAD_L + 22, min(W - PAD_R - 22, lvx))
 
-            svg_parts.append(f'<rect x="{hvx-19}" y="{hvy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hvx}" y="{hvy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_int}</text>')
+            # Inline Black Pills with Teal (#16a085) borders centered on coordinates
+            svg_parts.append(f'<rect x="{hvx-19}" y="{hvy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#16a085" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hvx}" y="{hvy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_int}</text>')
 
-            svg_parts.append(f'<rect x="{lvx-19}" y="{lwy+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lvx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_int}</text>')
+            svg_parts.append(f'<rect x="{lvx-19}" y="{lwy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#16a085" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lvx}" y="{lwy+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_int}</text>')
 
             if min_vis_val < thresh_caution:
                 svg_parts.append(f'<line x1="{PAD_L}" y1="{y_caution:.1f}" x2="{W-PAD_R}" y2="{y_caution:.1f}" stroke="#d97706" stroke-width="1" stroke-dasharray="3,3" opacity="0.85"/>')
@@ -825,7 +824,6 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{badge_x-9}" y="{y_danger-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
                 svg_parts.append(f'<text x="{badge_x}" y="{y_danger-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{d_label}</text>')
 
-            # Refined eye icon lines (stroke-width 1.1)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-5 0 C-2 -3.5, 2 -3.5, 5 0 C 2 3.5, -2 3.5, -5 0 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
