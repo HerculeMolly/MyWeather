@@ -937,7 +937,8 @@ with st.expander(T["drawer_title"]):
             st.rerun()
 
     st.markdown(f"#### {T['units_head']}")
-    c_u1, c_u2, c_u3 = st.columns(3)
+    # Adjusted column widths so °C/°F is wider, Language is shorter, and all 3 sit cleanly on one line
+    c_u1, c_u2, c_u3 = st.columns([1.3, 1.0, 0.9])
     with c_u1:
         t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1)
         if t_choice != st.session_state.unit_temp:
@@ -951,7 +952,7 @@ with st.expander(T["drawer_title"]):
     with c_u3:
         lang_keys = ["en", "fr", "de", "es"]
         l_choice = st.selectbox(
-            "Lang",
+            "Language",
             lang_keys,
             index=lang_keys.index(st.session_state.lang),
             format_func=lambda x: x.upper(),
