@@ -584,7 +584,7 @@ def build_svg_block(charts_to_render):
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values (enlarged +10% more -> font size 11, width 38, height 15)
+            # High and Low Temperature integer values (font size 11, font weight 600)
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -595,12 +595,12 @@ def build_svg_block(charts_to_render):
             lx, ly = pts_t[min_idx]
 
             svg_parts.append(f'<rect x="{hx-19}" y="{hy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
+            svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
 
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
+            svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator (enlarged +10% more -> font size 11, width 42, height 16)
+            # Feels-like Max Difference Indicator (font size 11, font weight 600)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
@@ -610,7 +610,7 @@ def build_svg_block(charts_to_render):
             text_y_pos = dy - 11 if max_diff >= 0 else dy + 17
 
             svg_parts.append(f'<rect x="{dx-21}" y="{text_y_pos-11}" width="42" height="16" fill="#1f1f1f" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
                 # Underline for negative values
@@ -624,7 +624,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<circle cx="8" cy="8" r="4.5" fill="#f59e0b"/>')
             svg_parts.append('<path d="M8 1V0M8 15v-1M1 8H0M16 8h-1M3 3L2 2M13 13l1 1M3 13l-1 1M13 2l1 1" stroke="#f59e0b" stroke-width="1.4" stroke-linecap="round"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="700" fill="currentColor">°{st.session_state.unit_temp}</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
         # GRAPH 2 (PRECIPITATION)
         elif metric == "precip":
@@ -643,7 +643,7 @@ def build_svg_block(charts_to_render):
                 peak_idx = mms.index(max_mm)
                 px, py = pts_p[peak_idx]
                 svg_parts.append(f'<rect x="{px-16}" y="{py-16}" width="32" height="13" fill="rgba(255,255,255,0.85)" rx="2"/>')
-                svg_parts.append(f'<text x="{px}" y="{py-7}" font-size="8" font-weight="700" fill="currentColor" text-anchor="middle">{max_mm:.1f}mm</text>')
+                svg_parts.append(f'<text x="{px}" y="{py-7}" font-size="8" font-weight="600" fill="currentColor" text-anchor="middle">{max_mm:.1f}mm</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
 
