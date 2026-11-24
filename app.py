@@ -210,29 +210,16 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* Strict Equal-Width Flex Row for Settings Selectboxes (No Wrap) */
-    .settings-row {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        gap: 8px;
-        width: 100%;
-        align-items: flex-end;
-        margin-bottom: 8px;
+    /* Force absolute equal width and zero wrap across all 3 settings columns */
+    div.row-widget.stHorizontal {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
     }
-    .settings-col {
-        flex: 1 1 0px;
-        min-width: 0;
-    }
-    .settings-col label {
-        font-size: 0.78rem;
-        font-weight: 600;
-        margin-bottom: 2px;
-        display: block;
-        opacity: 0.85;
-        white-space: nowrap;
-    }
-    .settings-col div[data-baseweb="select"] {
+    div.row-widget.stHorizontal > div {
+        flex: 1 1 0px !important;
+        min-width: 0 !important;
         width: 100% !important;
     }
 
@@ -964,19 +951,7 @@ with st.expander(T["drawer_title"]):
 
     st.markdown(f"#### {T['units_head']}")
     
-    # Custom HTML Flexbox Container for strict single-line equal-width settings boxes
-    st.markdown(
-        f"""
-        <div class="settings-row">
-            <div class="settings-col" id="col-temp"></div>
-            <div class="settings-col" id="col-wind"></div>
-            <div class="settings-col" id="col-lang"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    
-    # Render the selectboxes inside Streamlit columns mapped to the custom layout
+    # 3 equal columns forcing strict side-by-side flexbox alignment without wrapping
     sc1, sc2, sc3 = st.columns(3)
     with sc1:
         t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
