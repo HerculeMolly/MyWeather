@@ -519,7 +519,7 @@ def build_svg_block(charts_to_render):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
-    icon_x = max(PAD_L + 16, min(W - PAD_R - 65, midnight_x - 14))
+    icon_x = max(PAD_L + 16, min(W - PAD_R - 70, midnight_x - 14))
 
     svg_parts = [
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
@@ -637,14 +637,22 @@ def build_svg_block(charts_to_render):
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
 
+            # Peak Probability Badge & Peak mm Badge
+            max_prob = int(round(max(probs)))
+            max_prob_idx = probs.index(max(probs))
+            px_prob, py_prob = pts_p[max_prob_idx]
+
+            svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{px_prob}" y="{py_prob-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
+
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
-                px, py = pts_p[peak_idx]
-                svg_parts.append(f'<rect x="{px-22}" y="{py-16}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
-                svg_parts.append(f'<text x="{px}" y="{py-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
+                px_mm, py_mm = pts_p[peak_idx]
+                svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+                svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            # Rain/Droplet Icon (Unified Family with Thin Border) & % Units to the Right
+            # Rain/Droplet Icon & % Units to the Right
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="currentColor" opacity="0.85"/>')
