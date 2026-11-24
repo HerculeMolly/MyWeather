@@ -80,7 +80,7 @@ TRANSLATIONS = {
 ### Physics & Everyman Guide
 * **Graph1 (Temp):** Actual air temperature & feels like.
 * **Graph2 (Precipitation):** Rain probability & peak mm.
-* **Graph3 (Wind):** Sustained speed & gusts.
+* **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
 * **Graph4 (Visibility):** Horizontal visibility tracking.
         """,
     },
@@ -98,7 +98,7 @@ TRANSLATIONS = {
 ### Guide Physique & Pratique
 * **Température & Ressenti :** La ligne pleine indique la température réelle ; la ligne fine indique le ressenti avec le vent.
 * **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie ; le chiffre sous le pic indique les millimètres attendus.
-* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut.
+* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut, flèches de direction au sommet.
 * **Visibilité :** Ligne turquoise indiquant la visibilité horizontale en km.
         """,
     },
@@ -597,7 +597,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator with Bold Colored Arrow matching temp line (#e056fd)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
@@ -634,6 +633,12 @@ def build_svg_block(charts_to_render):
 
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
+
+            # 2nd Location Precipitation Dotted Line
+            if slice_data_2:
+                pts_p2 = make_points(slice_data_2["precip_prob"], 0, 100, top_pad, bot_pad)
+                p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
+                svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
@@ -682,6 +687,12 @@ def build_svg_block(charts_to_render):
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
             svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
 
+            # 2nd Location Wind Dotted Line
+            if slice_data_2:
+                pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad, bot_pad)
+                w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
+                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+
             max_wind_val = max(winds_raw)
             min_wind_val = min(winds_raw)
             max_gust_val = max(gusts_raw)
@@ -700,6 +711,21 @@ def build_svg_block(charts_to_render):
 
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
+
+            # Wind Direction Arrows along the top (skipped if near logo/icon or badge coordinates)
+            for i in range(1, 24, 3):
+                ax = x_pos(i)
+                ay = y0 + 8
+                # Collision check: skip if too close to icon_x region (left) or high/low badge x coordinates
+                if abs(ax - (icon_x + 9)) < 35 or abs(ax - hwx) < 28 or abs(ax - lwx) < 28:
+                    continue
+                deg = slice_data["wind_dir"][i]
+                svg_parts.append(
+                    f'<g transform="translate({ax:.1f},{ay}) rotate({deg})">'
+                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="1.4"/>'
+                    f'<polyline points="-2.5,1.5 0,4 2.5,1.5" fill="none" stroke="#3b82f6" stroke-width="1.4"/>'
+                    f"</g>"
+                )
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round">')
