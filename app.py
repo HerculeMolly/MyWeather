@@ -519,7 +519,7 @@ def build_svg_block(charts_to_render):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
-    icon_x = max(PAD_L + 16, min(W - PAD_R - 70, midnight_x - 14))
+    icon_x = max(PAD_L + 16, min(W - PAD_R - 65, midnight_x - 14))
 
     svg_parts = [
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
@@ -584,7 +584,7 @@ def build_svg_block(charts_to_render):
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values
+            # High and Low Temperature integer values (clamped to prevent edge clipping)
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -593,6 +593,8 @@ def build_svg_block(charts_to_render):
 
             hx, hy = pts_t[max_idx]
             lx, ly = pts_t[min_idx]
+            hx = max(PAD_L + 22, min(W - PAD_R - 22, hx))
+            lx = max(PAD_L + 22, min(W - PAD_R - 22, lx))
 
             svg_parts.append(f'<rect x="{hx-19}" y="{hy-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{hx}" y="{hy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_val}°</text>')
@@ -605,6 +607,7 @@ def build_svg_block(charts_to_render):
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
+            dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
             sign_str = "+" if max_diff > 0 else ""
             delta_label = f"{sign_str}{int(round(max_diff))}°"
             text_y_pos = dy - 11 if max_diff >= 0 else dy + 17
@@ -617,7 +620,7 @@ def build_svg_block(charts_to_render):
             else:
                 svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos-13}" x2="{dx+19}" y2="{text_y_pos-13}" stroke="#ef4444" stroke-width="2"/>')
 
-            # Thermometer Logo (Unified Family with Thin Border) & Units to the Right
+            # Thermometer Logo & Units
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="currentColor"/>')
@@ -637,10 +640,11 @@ def build_svg_block(charts_to_render):
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
 
-            # Peak Probability Badge & Peak mm Badge
+            # Peak Probability Badge & Peak mm Badge (clamped to prevent edge clipping)
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
             px_prob, py_prob = pts_p[max_prob_idx]
+            px_prob = max(PAD_L + 22, min(W - PAD_R - 22, px_prob))
 
             svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-16}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{px_prob}" y="{py_prob-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
@@ -649,15 +653,21 @@ def build_svg_block(charts_to_render):
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
                 px_mm, py_mm = pts_p[peak_idx]
+                px_mm = max(PAD_L + 22, min(W - PAD_R - 22, px_mm))
                 svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            # Rain/Droplet Icon & % Units to the Right
+            # Rain Icon & % Unit to the right
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="currentColor" opacity="0.85"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
+
+            # 24h Total Rainfall Badge directly underneath the icon box
+            total_24h = sum(mms[:24])
+            svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
+            svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
         # GRAPH 3 (WIND)
         elif metric == "wind":
