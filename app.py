@@ -566,25 +566,20 @@ def build_svg_block(charts_to_render):
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
 
-            # Subtly shaded area under main temp line
             area_str = f"M {pts_t[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_t) + f" L {pts_t[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(224, 86, 253, 0.12)"/>')
 
-            # Feels-like solid line
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
             svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.5" opacity="0.9"/>')
 
-            # Main Temperature solid line
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
             svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.2"/>')
 
-            # 2nd Location Temperature Dotted Line
             if slice_data_2:
                 pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values (prominent, weight 600)
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -602,7 +597,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator (Lighter grey pill #d1d5db with dark charcoal #1f1f1f text for maximum legibility)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
@@ -620,7 +614,6 @@ def build_svg_block(charts_to_render):
             else:
                 svg_parts.append(f'<line x1="{dx-15}" y1="{text_y_pos-11}" x2="{dx+15}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.5"/>')
 
-            # Thermometer Logo & Units
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="currentColor"/>')
@@ -640,7 +633,6 @@ def build_svg_block(charts_to_render):
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
 
-            # Peak Probability Badge & Peak mm Badge (clamped to prevent edge clipping)
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
             px_prob, py_prob = pts_p[max_prob_idx]
@@ -657,34 +649,58 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            # Rain Icon & % Unit to the right
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="currentColor" opacity="0.85"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
 
-            # 24h Total Rainfall Badge directly underneath the icon box
             total_24h = sum(mms[:24])
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
             svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
         # GRAPH 3 (WIND)
         elif metric == "wind":
-            all_w = slice_data["wind"] + slice_data["gust"]
+            winds_raw = slice_data["wind"]
+            gusts_raw = slice_data["gust"]
+            all_w = winds_raw + gusts_raw
             if slice_data_2:
                 all_w += slice_data_2["wind"]
             max_w = max(25, math.ceil(max(all_w) / 10.0) * 10)
 
-            pts_w = make_points(slice_data["wind"], 0, max_w, top_pad + 6, bot_pad)
-            pts_g = make_points(slice_data["gust"], 0, max_w, top_pad + 6, bot_pad)
+            pts_w = make_points(winds_raw, 0, max_w, top_pad, bot_pad)
+            pts_g = make_points(gusts_raw, 0, max_w, top_pad, bot_pad)
 
+            # Shaded area under main wind speed line
+            area_str = f"M {pts_w[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_w) + f" L {pts_w[-1][0]:.1f},{bot_pad} Z"
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.12)"/>')
+
+            # Gust solid line (no badges)
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
             svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>')
 
+            # Main Wind Speed solid line
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
-            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="currentColor" stroke-width="2"/>')
+            svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
 
+            # High and Low Wind Speed integer values (prominent, weight 600)
+            max_wind = int(round(max(winds_raw)))
+            min_wind = int(round(min(winds_raw)))
+            max_w_idx = winds_raw.index(max(winds_raw))
+            min_w_idx = winds_raw.index(min(winds_raw))
+
+            hwx, hwy = pts_w[max_w_idx]
+            lwx, lwy = pts_w[min_w_idx]
+            hwx = max(PAD_L + 22, min(W - PAD_R - 22, hwx))
+            lwx = max(PAD_L + 22, min(W - PAD_R - 22, lwx))
+
+            svg_parts.append(f'<rect x="{hwx-21}" y="{hwy-16}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hwx}" y="{hwy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_wind}</text>')
+
+            svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
+
+            # Wind Direction Arrows along the top
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
@@ -696,7 +712,14 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
+            # Custom Wind Logo & Unit Box with 3 curly swirl lines
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round">')
+            svg_parts.append('<path d="M1 2 h8 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-1"/>')
+            svg_parts.append('<path d="M3 7 h10 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-3"/>')
+            svg_parts.append('<path d="M2 12 h6 c1.2 0 2 0.8 2 2 s-0.8 2 -2 2 h-0.5"/>')
+            svg_parts.append('</g>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
 
         # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
