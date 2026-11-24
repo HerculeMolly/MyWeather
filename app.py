@@ -138,7 +138,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First)
+# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First) with Refined Border Contrast
 st.markdown(
     """
     <style>
@@ -198,7 +198,7 @@ st.markdown(
     }
 
     .charts-wrapper {
-        border: 1px solid rgba(128, 128, 128, 0.35);
+        border: 1px solid rgba(128, 128, 128, 0.55);
         border-radius: 6px;
         overflow: hidden;
         margin-top: 3px;
@@ -215,7 +215,7 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         padding-top: 3px;
-        border-top: 1px solid rgba(128, 128, 128, 0.2);
+        border-top: 1px solid rgba(128, 128, 128, 0.3);
         margin-top: 2px;
         margin-bottom: 2px;
     }
@@ -526,7 +526,7 @@ def build_svg_block(charts_to_render):
     ]
 
     svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
-    svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
+    svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
     for i in range(0, 25, 4):
         lbl = slice_data["times"][i].split("T")[1].replace(":", "")
         xp = x_pos(i)
@@ -553,7 +553,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.08)"/>')
 
         if row_idx > 0:
-            svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.35)" stroke-width="1"/>')
+            svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
         # GRAPH 1 (TEMP)
         if metric == "temp":
@@ -634,7 +634,6 @@ def build_svg_block(charts_to_render):
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#2980b9" stroke-width="2"/>')
 
-            # 2nd Location Precipitation Dotted Line
             if slice_data_2:
                 pts_p2 = make_points(slice_data_2["precip_prob"], 0, 100, top_pad, bot_pad)
                 p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
@@ -687,7 +686,6 @@ def build_svg_block(charts_to_render):
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
             svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
 
-            # 2nd Location Wind Dotted Line
             if slice_data_2:
                 pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad, bot_pad)
                 w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
@@ -712,11 +710,9 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
-            # Wind Direction Arrows along the top (skipped if near logo/icon or badge coordinates)
             for i in range(1, 24, 3):
                 ax = x_pos(i)
                 ay = y0 + 8
-                # Collision check: skip if too close to icon_x region (left) or high/low badge x coordinates
                 if abs(ax - (icon_x + 9)) < 35 or abs(ax - hwx) < 28 or abs(ax - lwx) < 28:
                     continue
                 deg = slice_data["wind_dir"][i]
@@ -744,13 +740,50 @@ def build_svg_block(charts_to_render):
 
         # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
-            all_v = slice_data["vis"] + (slice_data_2["vis"] if slice_data_2 else [])
+            vis_raw = slice_data["vis"]
+            all_v = vis_raw + (slice_data_2["vis"] if slice_data_2 else [])
             max_v = max(20, math.ceil(max(all_v) / 5.0) * 5)
-            pts_v = make_points(slice_data["vis"], 0, max_v, top_pad, bot_pad)
 
+            pts_v = make_points(vis_raw, 0, max_v, top_pad, bot_pad)
+
+            # Shaded area under main visibility line
+            area_str = f"M {pts_v[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_v) + f" L {pts_v[-1][0]:.1f},{bot_pad} Z"
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(22, 160, 133, 0.12)"/>')
+
+            # Main Visibility solid line
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
-            svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2"/>')
+            svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2.2"/>')
+
+            # 2nd Location Visibility Dotted Line
+            if slice_data_2:
+                pts_v2 = make_points(slice_data_2["vis"], 0, max_v, top_pad, bot_pad)
+                v2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v2)
+                svg_parts.append(f'<polyline points="{v2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+
+            # High and Low Visibility values (prominent, weight 600)
+            max_vis_val = max(vis_raw)
+            min_vis_val = min(vis_raw)
+            max_vis_idx = vis_raw.index(max_vis_val)
+            min_vis_idx = vis_raw.index(min_vis_val)
+
+            hvx, hvy = pts_v[max_vis_idx]
+            lvx, lwy = pts_v[min_vis_idx]
+            hvx = max(PAD_L + 22, min(W - PAD_R - 22, hvx))
+            lvx = max(PAD_L + 22, min(W - PAD_R - 22, lvx))
+
+            svg_parts.append(f'<rect x="{hvx-21}" y="{hvy-16}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{hvx}" y="{hvy-5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_vis_val:.1f}</text>')
+
+            svg_parts.append(f'<rect x="{lvx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
+            svg_parts.append(f'<text x="{lvx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_val:.1f}</text>')
+
+            # Custom Eye Logo & Unit Box
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
+            svg_parts.append('<path d="M-5 0 C-2 -3.5, 2 -3.5, 5 0 C 2 3.5, -2 3.5, -5 0 Z" fill="none" stroke="currentColor" stroke-width="1.2"/>')
+            svg_parts.append('<circle cx="0" cy="0" r="1.8" fill="currentColor"/>')
+            svg_parts.append('</g>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">km</text>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
