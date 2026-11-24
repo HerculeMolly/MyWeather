@@ -80,7 +80,7 @@ TRANSLATIONS = {
 ### Physics & Everyman Guide
 * **Graph1 (Temp):** Actual air temperature & feels like.
 * **Graph2 (Precipitation):** Rain probability & peak mm.
-* **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
+* **Graph3 (Wind):** Sustained speed & gusts.
 * **Graph4 (Visibility):** Horizontal visibility tracking.
         """,
     },
@@ -98,7 +98,7 @@ TRANSLATIONS = {
 ### Guide Physique & Pratique
 * **Température & Ressenti :** La ligne pleine indique la température réelle ; la ligne fine indique le ressenti avec le vent.
 * **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie ; le chiffre sous le pic indique les millimètres attendus.
-* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut, flèches de direction au sommet.
+* **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut.
 * **Visibilité :** Ligne turquoise indiquant la visibilité horizontale en km.
         """,
     },
@@ -684,10 +684,13 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
 
             # High and Low Wind Speed integer values (prominent, weight 600)
-            max_wind = int(round(max(winds_raw)))
-            min_wind = int(round(min(winds_raw)))
-            max_w_idx = winds_raw.index(max(winds_raw))
-            min_w_idx = winds_raw.index(min(winds_raw))
+            max_wind_val = max(winds_raw)
+            min_wind_val = min(winds_raw)
+            max_gust_val = max(gusts_raw)
+            max_wind = int(round(max_wind_val))
+            min_wind = int(round(min_wind_val))
+            max_w_idx = winds_raw.index(max_wind_val)
+            min_w_idx = winds_raw.index(min_wind_val)
 
             hwx, hwy = pts_w[max_w_idx]
             lwx, lwy = pts_w[min_w_idx]
@@ -700,19 +703,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lwx-21}" y="{lwy+2}" width="42" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lwx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_wind}</text>')
 
-            # Wind Direction Arrows along the top
-            for i in range(1, 24, 3):
-                ax = x_pos(i)
-                ay = y0 + 8
-                deg = slice_data["wind_dir"][i]
-                svg_parts.append(
-                    f'<g transform="translate({ax:.1f},{ay}) rotate({deg})">'
-                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="1.4"/>'
-                    f'<polyline points="-2.5,1.5 0,4 2.5,1.5" fill="none" stroke="#3b82f6" stroke-width="1.4"/>'
-                    f"</g>"
-                )
-
-            # Custom Wind Logo & Unit Box with 3 curly swirl lines
+            # Custom Wind Logo & Unit Box with 3 curly swirl lines (No direction arrows)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round">')
             svg_parts.append('<path d="M1 2 h8 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-1"/>')
@@ -720,6 +711,14 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M2 12 h6 c1.2 0 2 0.8 2 2 s-0.8 2 -2 2 h-0.5"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
+
+            # Wind Warning Supporting Badge immediately below icon (triggers at >=35 mph / 56 km/h sustained or >=50 mph / 80 km/h gust)
+            sust_thresh = 35.0 if st.session_state.unit_wind == "mph" else 56.0
+            gust_thresh = 50.0 if st.session_state.unit_wind == "mph" else 80.0
+            if max_wind_val >= sust_thresh or max_gust_val >= gust_thresh:
+                warn_txt = f"⚠ G{int(round(max_gust_val))}" if max_gust_val >= gust_thresh else f"⚠ {max_wind}"
+                svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
+                svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32.5}" font-size="8.5" font-weight="500" fill="#1f1f1f" text-anchor="middle">{warn_txt}</text>')
 
         # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
