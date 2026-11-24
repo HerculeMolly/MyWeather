@@ -519,7 +519,7 @@ def build_svg_block(charts_to_render):
         if slice_data["times"][i].endswith("T00:00"):
             midnight_x = x_pos(i)
             break
-    icon_x = max(PAD_L + 16, min(W - PAD_R - 65, midnight_x - 14))
+    icon_x = max(PAD_L + 16, min(W - PAD_R - 70, midnight_x - 14))
 
     svg_parts = [
         f'<svg viewBox="0 0 {W} {TOTAL_H}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: inherit;">'
@@ -584,7 +584,7 @@ def build_svg_block(charts_to_render):
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values (clamped to prevent edge clipping)
+            # High and Low Temperature integer values (prominent, weight 600)
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -602,23 +602,23 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator
+            # Feels-like Max Difference Indicator (Supporting Act: 10% smaller, weight 500, toned down semi-transparent background)
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
-            dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
+            dx = max(PAD_L + 20, min(W - PAD_R - 20, dx))
             sign_str = "+" if max_diff > 0 else ""
             delta_label = f"{sign_str}{int(round(max_diff))}°"
-            text_y_pos = dy - 11 if max_diff >= 0 else dy + 17
+            text_y_pos = dy - 10 if max_diff >= 0 else dy + 15
 
-            svg_parts.append(f'<rect x="{dx-21}" y="{text_y_pos-11}" width="42" height="16" fill="#1f1f1f" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<rect x="{dx-17}" y="{text_y_pos-9}" width="34" height="14" fill="rgba(31,31,31,0.75)" stroke="#d97706" stroke-width="1" rx="2"/>')
+            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="500" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
-                svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos+4}" x2="{dx+19}" y2="{text_y_pos+4}" stroke="#d97706" stroke-width="2"/>')
+                svg_parts.append(f'<line x1="{dx-15}" y1="{text_y_pos+3}" x2="{dx+15}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.5"/>')
             else:
-                svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos-13}" x2="{dx+19}" y2="{text_y_pos-13}" stroke="#ef4444" stroke-width="2"/>')
+                svg_parts.append(f'<line x1="{dx-15}" y1="{text_y_pos-11}" x2="{dx+15}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.5"/>')
 
             # Thermometer Logo & Units
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
