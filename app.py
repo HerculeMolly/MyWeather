@@ -131,7 +131,7 @@ TRANSLATIONS = {
 ---
 ### Guía Física y Práctica
 * **Temperatura y Sensación:** Línea sólida muestra temperatura real; línea fina muestra sensación térmica.
-* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia; el número bajo el pico indica milímetros máximos.
+* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia; el valor bajo el pico indica milímetros máximos.
         """,
     },
 }
@@ -584,7 +584,7 @@ def build_svg_block(charts_to_render):
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
                 svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
 
-            # High and Low Temperature integer values (font size 11, font weight 600)
+            # High and Low Temperature integer values
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
             min_val = int(round(min(temps_raw)))
@@ -600,7 +600,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like Max Difference Indicator (font size 11, font weight 600)
+            # Feels-like Max Difference Indicator
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
@@ -613,16 +613,15 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
-                # Underline for negative values
                 svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos+4}" x2="{dx+19}" y2="{text_y_pos+4}" stroke="#d97706" stroke-width="2"/>')
             else:
-                # Overline for positive values
                 svg_parts.append(f'<line x1="{dx-19}" y1="{text_y_pos-13}" x2="{dx+19}" y2="{text_y_pos-13}" stroke="#ef4444" stroke-width="2"/>')
 
-            # Sun Logo & Units Displayed Immediately to the Right
-            svg_parts.append(f'<g transform="translate({icon_x}, {y0+4})">')
-            svg_parts.append('<circle cx="8" cy="8" r="4.5" fill="#f59e0b"/>')
-            svg_parts.append('<path d="M8 1V0M8 15v-1M1 8H0M16 8h-1M3 3L2 2M13 13l1 1M3 13l-1 1M13 2l1 1" stroke="#f59e0b" stroke-width="1.4" stroke-linecap="round"/>')
+            # Thermometer Logo (Unified Family with Thin Border) & Units to the Right
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
+            svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="currentColor"/>')
+            svg_parts.append('<circle cx="0" cy="3.5" r="1.2" fill="none"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
@@ -645,7 +644,7 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{px-16}" y="{py-16}" width="32" height="13" fill="rgba(255,255,255,0.85)" rx="2"/>')
                 svg_parts.append(f'<text x="{px}" y="{py-7}" font-size="8" font-weight="600" fill="currentColor" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
 
         # GRAPH 3 (WIND)
         elif metric == "wind":
@@ -674,7 +673,7 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
 
         # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
@@ -684,7 +683,7 @@ def build_svg_block(charts_to_render):
 
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
             svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2"/>')
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.3)"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
