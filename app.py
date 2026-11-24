@@ -81,7 +81,7 @@ TRANSLATIONS = {
 * **Graph1 (Temp):** Actual air temperature & feels like.
 * **Graph2 (Precipitation):** Rain probability & peak mm.
 * **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
-* **Graph4 (Visibility):** Horizontal visibility tracking with 5km & 1km hazard markers.
+* **Graph4 (Visibility):** Horizontal visibility tracking with hazard markers.
         """,
     },
     "fr": {
@@ -99,7 +99,7 @@ TRANSLATIONS = {
 * **Température & Ressenti :** La ligne pleine indique la température réelle ; la ligne fine indique le ressenti avec le vent.
 * **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie ; le chiffre sous le pic indique les millimètres attendus.
 * **Vent & Rafales :** Vitesse moyenne en bas, rafales en haut, flèches de direction au sommet.
-* **Visibilité :** Ligne turquoise indiquant la visibilité horizontale en km.
+* **Visibilité :** Ligne turquoise indiquant la visibilité horizontale.
         """,
     },
     "de": {
@@ -447,6 +447,10 @@ if st.session_state.unit_wind == "mph":
     slice_data["gust"] = [round(k * 0.621371, 1) for k in slice_data["gust"]]
     if slice_data_2:
         slice_data_2["wind"] = [round(k * 0.621371, 1) for k in slice_data_2["wind"]]
+    # Convert visibility km to miles if imperial units active
+    slice_data["vis"] = [round(v * 0.621371, 2) for v in slice_data["vis"]]
+    if slice_data_2:
+        slice_data_2["vis"] = [round(v * 0.621371, 2) for v in slice_data_2["vis"]]
 
 # 6. Header Row
 col_head, col_logo = st.columns([5, 1])
@@ -570,7 +574,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<path d="{area_str}" fill="rgba(224, 86, 253, 0.12)"/>')
 
             f_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_f)
-            svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.5" opacity="0.9"/>')
+            svg_parts.append(f'<polyline points="{f_str}" fill="none" stroke="#d97706" stroke-width="1.3" opacity="0.9"/>')
 
             t_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t)
             svg_parts.append(f'<polyline points="{t_str}" fill="none" stroke="#e056fd" stroke-width="2.2"/>')
@@ -578,7 +582,7 @@ def build_svg_block(charts_to_render):
             if slice_data_2:
                 pts_t2 = make_points(slice_data_2["temp"], min_t, max_t, top_pad, bot_pad)
                 t2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_t2)
-                svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+                svg_parts.append(f'<polyline points="{t2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             temps_raw = slice_data["temp"]
             max_val = int(round(max(temps_raw)))
@@ -611,14 +615,15 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="600" fill="#e056fd" text-anchor="middle">{delta_label}</text>')
             
             if max_diff < 0:
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.5"/>')
+                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.3"/>')
             else:
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-11}" x2="{dx+17}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.5"/>')
+                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-11}" x2="{dx+17}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.3"/>')
 
+            # Refined icon lines (stroke-width 1.1, crisp vector path)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="currentColor"/>')
-            svg_parts.append('<circle cx="0" cy="3.5" r="1.2" fill="none"/>')
+            svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
+            svg_parts.append('<circle cx="0" cy="3.5" r="1.1" fill="currentColor"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
@@ -637,7 +642,7 @@ def build_svg_block(charts_to_render):
             if slice_data_2:
                 pts_p2 = make_points(slice_data_2["precip_prob"], 0, 100, top_pad, bot_pad)
                 p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
-                svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+                svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
@@ -655,9 +660,10 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
+            # Refined precipitation icon lines
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="currentColor" opacity="0.85"/>')
+            svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
 
@@ -681,7 +687,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.12)"/>')
 
             g_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_g)
-            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.3"/>')
+            svg_parts.append(f'<polyline points="{g_str}" fill="none" stroke="rgba(128,128,128,0.7)" stroke-width="1.2"/>')
 
             w_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w)
             svg_parts.append(f'<polyline points="{w_str}" fill="none" stroke="#3b82f6" stroke-width="2.2"/>')
@@ -689,7 +695,7 @@ def build_svg_block(charts_to_render):
             if slice_data_2:
                 pts_w2 = make_points(slice_data_2["wind"], 0, max_w, top_pad, bot_pad)
                 w2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_w2)
-                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+                svg_parts.append(f'<polyline points="{w2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             max_wind_val = max(winds_raw)
             min_wind_val = min(winds_raw)
@@ -718,13 +724,14 @@ def build_svg_block(charts_to_render):
                 deg = slice_data["wind_dir"][i]
                 svg_parts.append(
                     f'<g transform="translate({ax:.1f},{ay}) rotate({deg})">'
-                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="1.4"/>'
-                    f'<polyline points="-2.5,1.5 0,4 2.5,1.5" fill="none" stroke="#3b82f6" stroke-width="1.4"/>'
+                    f'<line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="1.2"/>'
+                    f'<polyline points="-2,1.5 0,3.5 2,1.5" fill="none" stroke="#3b82f6" stroke-width="1.2"/>'
                     f"</g>"
                 )
 
+            # Refined wind logo lines (stroke-width 1.1)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
-            svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round">')
+            svg_parts.append(f'<g transform="translate({icon_x+3}, {y0+6})" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round">')
             svg_parts.append('<path d="M1 2 h8 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-1"/>')
             svg_parts.append('<path d="M3 7 h10 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-3"/>')
             svg_parts.append('<path d="M2 12 h6 c1.2 0 2 0.8 2 2 s-0.8 2 -2 2 h-0.5"/>')
@@ -746,43 +753,43 @@ def build_svg_block(charts_to_render):
 
             pts_v = make_points(vis_raw, 0, max_v, top_pad, bot_pad)
 
-            # Threshold values (5 km caution, 1 km danger)
-            y_5 = bot_pad - (5.0 / max_v) * (bot_pad - top_pad)
-            y_1 = bot_pad - (1.0 / max_v) * (bot_pad - top_pad)
+            # Threshold values based on unit (mi vs km)
+            is_miles = st.session_state.unit_wind == "mph"
+            thresh_caution = 3.1 if is_miles else 5.0
+            thresh_danger = 0.6 if is_miles else 1.0
+            unit_label = "mi" if is_miles else "km"
 
-            # Vertical Gradient Fill (userSpaceOnUse) for single-path robustness
+            y_caution = bot_pad - (thresh_caution / max_v) * (bot_pad - top_pad)
+            y_danger = bot_pad - (thresh_danger / max_v) * (bot_pad - top_pad)
+
             grad_id = f"visGrad_{row_idx}"
-            stop_5 = max(0.0, min(1.0, (y_5 - top_pad) / max(bot_pad - top_pad, 1.0)))
-            stop_1 = max(stop_5, min(1.0, (y_1 - top_pad) / max(bot_pad - top_pad, 1.0)))
+            stop_c = max(0.0, min(1.0, (y_caution - top_pad) / max(bot_pad - top_pad, 1.0)))
+            stop_d = max(stop_c, min(1.0, (y_danger - top_pad) / max(bot_pad - top_pad, 1.0)))
 
             svg_parts.append(
                 f'<defs>'
                 f'<linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="0" y1="{top_pad}" x2="0" y2="{bot_pad}">'
                 f'<stop offset="0%" stop-color="#16a085" stop-opacity="0.14"/>'
-                f'<stop offset="{stop_5*100:.1f}%" stop-color="#16a085" stop-opacity="0.14"/>'
-                f'<stop offset="{stop_5*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
-                f'<stop offset="{stop_1*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
-                f'<stop offset="{stop_1*100:.1f}%" stop-color="#ef4444" stop-opacity="0.28"/>'
+                f'<stop offset="{stop_c*100:.1f}%" stop-color="#16a085" stop-opacity="0.14"/>'
+                f'<stop offset="{stop_c*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
+                f'<stop offset="{stop_d*100:.1f}%" stop-color="#d97706" stop-opacity="0.22"/>'
+                f'<stop offset="{stop_d*100:.1f}%" stop-color="#ef4444" stop-opacity="0.28"/>'
                 f'<stop offset="100%" stop-color="#ef4444" stop-opacity="0.28"/>'
                 f'</linearGradient>'
                 f'</defs>'
             )
 
-            # Single unbroken shaded area path
             area_str = f"M {pts_v[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_v) + f" L {pts_v[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="url(#{grad_id})"/>')
 
-            # Main Visibility solid line
             v_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v)
             svg_parts.append(f'<polyline points="{v_str}" fill="none" stroke="#16a085" stroke-width="2.2"/>')
 
-            # 2nd Location Visibility Dotted Line
             if slice_data_2:
                 pts_v2 = make_points(slice_data_2["vis"], 0, max_v, top_pad, bot_pad)
                 v2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_v2)
-                svg_parts.append(f'<polyline points="{v2_str}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3,3"/>')
+                svg_parts.append(f'<polyline points="{v2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
-            # High and Low Visibility integer values (rounded to nearest integer)
             max_vis_val = max(vis_raw)
             min_vis_val = min(vis_raw)
             max_vis_int = int(round(max_vis_val))
@@ -801,31 +808,30 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lvx-19}" y="{lwy+2}" width="38" height="15" fill="#1f1f1f" stroke="#ffffff" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lvx}" y="{lwy+13}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_vis_int}</text>')
 
-            # All-or-nothing 5 km & 1 km horizontal reference lines + smart side-placed supporting badges
-            if min_vis_val < 5.0:
-                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_5:.1f}" x2="{W-PAD_R}" y2="{y_5:.1f}" stroke="#d97706" stroke-width="1" stroke-dasharray="3,3" opacity="0.85"/>')
-                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_1:.1f}" x2="{W-PAD_R}" y2="{y_1:.1f}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" opacity="0.9"/>')
+            if min_vis_val < thresh_caution:
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_caution:.1f}" x2="{W-PAD_R}" y2="{y_caution:.1f}" stroke="#d97706" stroke-width="1" stroke-dasharray="3,3" opacity="0.85"/>')
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_danger:.1f}" x2="{W-PAD_R}" y2="{y_danger:.1f}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" opacity="0.9"/>')
 
-                # Determine which side (left vs right) has more vertical clearance from the curve
-                left_clearance = abs(vis_raw[0] - 5.0) + abs(vis_raw[1] - 5.0)
-                right_clearance = abs(vis_raw[-1] - 5.0) + abs(vis_raw[-2] - 5.0)
+                left_clearance = abs(vis_raw[0] - thresh_caution) + abs(vis_raw[1] - thresh_caution)
+                right_clearance = abs(vis_raw[-1] - thresh_caution) + abs(vis_raw[-2] - thresh_caution)
                 badge_x = (PAD_L + 12) if left_clearance >= right_clearance else (W - PAD_R - 12)
 
-                # '5' Caution Supporting Badge
-                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_5-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#d97706" stroke-width="0.9" rx="2"/>')
-                svg_parts.append(f'<text x="{badge_x}" y="{y_5-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">5</text>')
+                c_label = "3" if is_miles else "5"
+                d_label = "1"
 
-                # '1' Danger Supporting Badge
-                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_1-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
-                svg_parts.append(f'<text x="{badge_x}" y="{y_1-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">1</text>')
+                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_caution-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#d97706" stroke-width="0.9" rx="2"/>')
+                svg_parts.append(f'<text x="{badge_x}" y="{y_caution-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{c_label}</text>')
 
-            # Custom Eye Logo & Unit Box
+                svg_parts.append(f'<rect x="{badge_x-9}" y="{y_danger-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
+                svg_parts.append(f'<text x="{badge_x}" y="{y_danger-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{d_label}</text>')
+
+            # Refined eye icon lines (stroke-width 1.1)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M-5 0 C-2 -3.5, 2 -3.5, 5 0 C 2 3.5, -2 3.5, -5 0 Z" fill="none" stroke="currentColor" stroke-width="1.2"/>')
-            svg_parts.append('<circle cx="0" cy="0" r="1.8" fill="currentColor"/>')
+            svg_parts.append('<path d="M-5 0 C-2 -3.5, 2 -3.5, 5 0 C 2 3.5, -2 3.5, -5 0 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
+            svg_parts.append('<circle cx="0" cy="0" r="1.5" fill="currentColor"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">km</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{unit_label}</text>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
