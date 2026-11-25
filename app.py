@@ -64,74 +64,78 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
-# 3. Lightweight Multilingual Dictionary (Settings & Guide Drawer Only)
+# 3. Lightweight Multilingual Dictionary (Concise & Clean)
 TRANSLATIONS = {
     "en": {
-        "drawer_title": "🌤️ Weather Guide & Location Settings",
-        "loc1_head": "📍 Primary Location",
-        "loc2_head": "👨‍👩‍👧 2nd Location Overlay (Dotted Line)",
+        "exp_loc": "📍 Locations",
+        "exp_units": "⚙️ Units & Lang",
+        "exp_guide": "📖 Guide",
+        "loc1_head": "Primary Location",
+        "loc2_head": "2nd Location Overlay (Dotted Line)",
         "loc_placeholder": "UK Postcode, City, or Lat,Lon",
         "set_btn": "Set Location",
         "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
-        "units_head": "⚙️ Units & Language",
+        "units_head": "Units & Language Settings",
         "guide_md": """
----
-### Physics & Everyman Guide
-* **Graph1 (Temp):** Actual air temperature & feels like.
-* **Graph2 (Precipitation):** Rain probability & peak mm.
-* **Graph3 (Wind):** Sustained speed, gusts & direction arrows.
-* **Graph4 (Visibility):** Horizontal visibility tracking with hazard markers.
+* **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance.
+* **Precipitation:** Blue curve shows rain probability & peak mm/24h.
+* **Wind:** Slate grey lines track speed and gusts with direction arrows.
+* **Visibility:** Teal gradient highlights tracking haze and hazard thresholds.
         """,
     },
     "fr": {
-        "drawer_title": "🌤️ Guide Météo & Paramètres",
-        "loc1_head": "📍 Lieu Principal",
-        "loc2_head": "👨‍👩‍👧 2e Lieu Superposé (Ligne Pointillée)",
-        "loc_placeholder": "Ville ou Lat,Lon (ex: Paris)",
+        "exp_loc": "📍 Lieux",
+        "exp_units": "⚙️ Unités & Langue",
+        "exp_guide": "📖 Guide",
+        "loc1_head": "Lieu Principal",
+        "loc2_head": "2e Lieu Superposé",
+        "loc_placeholder": "Ville ou Lat,Lon",
         "set_btn": "Définir",
         "clear_btn": "Effacer 2e Lieu",
         "reset_btn": "Réinitialiser",
-        "units_head": "⚙️ Unités & Langue",
+        "units_head": "Unités & Langue",
         "guide_md": """
----
-### Guide Physique & Pratique
-* **Température & Ressenti :** La ligne rouge indique la température réelle ; la ligne orange indique le ressenti.
-* **Précipitations (% & mm) :** La courbe bleue indique le risque de pluie.
-* **Vent & Rafales :** Vitesse en gris ardoise, rafales en haut, flèches de direction.
-* **Visibilité :** Ligne turquoise indiquant la visibilité horizontale.
+* **Température & Ressenti :** Ligne rouge (réel) & orange (ressenti).
+* **Précipitations :** Risque de pluie et cumul mm.
+* **Vent :** Vitesse, rafales et orientation.
+* **Visibilité :** Suivi des seuils de brume et de brouillard.
         """,
     },
     "de": {
-        "drawer_title": "🌤️ Wetter-Guide & Einstellungen",
-        "loc1_head": "📍 Hauptstandort",
-        "loc2_head": "👨‍👩‍👧 2. Standort-Overlay (Gepunktet)",
-        "loc_placeholder": "Stadt oder Lat,Lon (z.B. Berlin)",
+        "exp_loc": "📍 Standorte",
+        "exp_units": "⚙️ Einheiten",
+        "exp_guide": "📖 Guide",
+        "loc1_head": "Hauptstandort",
+        "loc2_head": "2. Standort-Overlay",
+        "loc_placeholder": "Stadt oder Lat,Lon",
         "set_btn": "Speichern",
-        "clear_btn": "2. Ort löschen",
+        "clear_btn": "Löschen",
         "reset_btn": "Zurücksetzen",
-        "units_head": "⚙️ Einheiten & Sprache",
+        "units_head": "Einheiten & Sprache",
         "guide_md": """
----
-### Physik & Kurz-Guide
-* **Temperatur & Gefühlt:** Rote Linie zeigt Lufttemperatur; orange Linie gefühlte Temperatur.
-* **Niederschlag (% & mm):** Blaue Kurve zeigt Regenwahrscheinlichkeit.
+* **Temperatur:** Rot = Lufttemperatur, Orange = Gefühlt.
+* **Niederschlag:** Regenwahrscheinlichkeit & mm.
+* **Wind:** Geschwindigkeit, Böen & Windrichtung.
+* **Sichtweite:** Horizontale Sicht und Warnschwellen.
         """,
     },
     "es": {
-        "drawer_title": "🌤️ Guía del Tiempo y Ajustes",
-        "loc1_head": "📍 Ubicación Principal",
-        "loc2_head": "👨‍👩‍👧 2ª Ubicación (Línea Punteada)",
-        "loc_placeholder": "Ciudad o Lat,Lon (ej. Madrid)",
+        "exp_loc": "📍 Ubicaciones",
+        "exp_units": "⚙️ Unidades",
+        "exp_guide": "📖 Guía",
+        "loc1_head": "Ubicación Principal",
+        "loc2_head": "2ª Ubicación",
+        "loc_placeholder": "Ciudad o Lat,Lon",
         "set_btn": "Guardar",
-        "clear_btn": "Quitar 2ª Ubicación",
+        "clear_btn": "Quitar",
         "reset_btn": "Restablecer",
-        "units_head": "⚙️ Unidades e Idioma",
+        "units_head": "Unidades e Idioma",
         "guide_md": """
----
-### Guía Física y Práctica
-* **Temperatura y Sensación:** Línea roja muestra temperatura real; línea fina naranja muestra sensación térmica.
-* **Precipitación (% y mm):** Curva azul muestra probabilidad de lluvia.
+* **Temperatura:** Roja = real; naranja = sensación térmica.
+* **Precipitación:** Probabilidad de lluvia y mm.
+* **Viento:** Velocidad, ráfagas y dirección.
+* **Visibilidad:** Seguimiento de calima y niebla.
         """,
     },
 }
@@ -934,75 +938,77 @@ def resolve_location_string(query_str):
     return None
 
 
-# 8. Integrated Guide, Multi-Location & Settings Drawer
-with st.expander(T["drawer_title"]):
-    st.markdown(f"#### {T['loc1_head']}")
-    with st.form(key="loc1_form"):
-        q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
-        if st.form_submit_button(T["set_btn"], use_container_width=True) and q1:
-            res1 = resolve_location_string(q1)
-            if res1:
-                st.session_state.lat, st.session_state.lon, st.session_state.city = res1
-                st.query_params["lat"] = str(res1[0])
-                st.query_params["lon"] = str(res1[1])
-                st.query_params["city"] = res1[2]
-                st.rerun()
-            else:
-                st.error("Location not found.")
+# 8. Three Equal-Width Expanders Across All Screen Widths
+col_e1, col_e2, col_e3 = st.columns(3)
 
-    if st.session_state.city != "Peterborough":
-        if st.button(T["reset_btn"], use_container_width=True):
-            st.session_state.lat = 52.5785
-            st.session_state.lon = -0.1285
-            st.session_state.city = "Peterborough"
-            st.query_params.clear()
+with col_e1:
+    with st.expander(T["exp_loc"]):
+        st.markdown(f"**{T['loc1_head']}**")
+        with st.form(key="loc1_form"):
+            q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
+            if st.form_submit_button(T["set_btn"], use_container_width=True) and q1:
+                res1 = resolve_location_string(q1)
+                if res1:
+                    st.session_state.lat, st.session_state.lon, st.session_state.city = res1
+                    st.query_params["lat"] = str(res1[0])
+                    st.query_params["lon"] = str(res1[1])
+                    st.query_params["city"] = res1[2]
+                    st.rerun()
+                else:
+                    st.error("Location not found.")
+
+        if st.session_state.city != "Peterborough":
+            if st.button(T["reset_btn"], use_container_width=True):
+                st.session_state.lat = 52.5785
+                st.session_state.lon = -0.1285
+                st.session_state.city = "Peterborough"
+                st.query_params.clear()
+                st.rerun()
+
+        st.markdown(f"**{T['loc2_head']}**")
+        with st.form(key="loc2_form"):
+            q2 = st.text_input("2nd Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
+            if st.form_submit_button(T["set_btn"], use_container_width=True) and q2:
+                res2 = resolve_location_string(q2)
+                if res2:
+                    st.session_state.loc2 = {"lat": res2[0], "lon": res2[1], "name": res2[2]}
+                    st.rerun()
+                else:
+                    st.error("2nd Location not found.")
+
+        if st.session_state.loc2:
+            if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True):
+                st.session_state.loc2 = None
+                st.rerun()
+
+with col_e2:
+    with st.expander(T["exp_units"]):
+        st.markdown(f"**{T['units_head']}**")
+        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
+        if t_choice != st.session_state.unit_temp:
+            st.session_state.unit_temp = t_choice
+            st.rerun()
+            
+        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
+        if w_choice != st.session_state.unit_wind:
+            st.session_state.unit_wind = w_choice
+            st.rerun()
+            
+        lang_keys = ["en", "fr", "de", "es"]
+        l_choice = st.selectbox(
+            "Language",
+            lang_keys,
+            index=lang_keys.index(st.session_state.lang),
+            format_func=lambda x: x.upper(),
+            key="sel_lang"
+        )
+        if l_choice != st.session_state.lang:
+            st.session_state.lang = l_choice
             st.rerun()
 
-    st.markdown(f"#### {T['loc2_head']}")
-    with st.form(key="loc2_form"):
-        q2 = st.text_input("2nd Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
-        if st.form_submit_button(T["set_btn"], use_container_width=True) and q2:
-            res2 = resolve_location_string(q2)
-            if res2:
-                st.session_state.loc2 = {"lat": res2[0], "lon": res2[1], "name": res2[2]}
-                st.rerun()
-            else:
-                st.error("2nd Location not found.")
-
-    if st.session_state.loc2:
-        if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True):
-            st.session_state.loc2 = None
-            st.rerun()
-
-    st.markdown(f"#### {T['units_head']}")
-    
-    container_settings = st.container(key="settings_row")
-    with container_settings:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
-            if t_choice != st.session_state.unit_temp:
-                st.session_state.unit_temp = t_choice
-                st.rerun()
-        with c2:
-            w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
-            if w_choice != st.session_state.unit_wind:
-                st.session_state.unit_wind = w_choice
-                st.rerun()
-        with c3:
-            lang_keys = ["en", "fr", "de", "es"]
-            l_choice = st.selectbox(
-                "Language",
-                lang_keys,
-                index=lang_keys.index(st.session_state.lang),
-                format_func=lambda x: x.upper(),
-                key="sel_lang"
-            )
-            if l_choice != st.session_state.lang:
-                st.session_state.lang = l_choice
-                st.rerun()
-
-    st.markdown(T["guide_md"])
+with col_e3:
+    with st.expander(T["exp_guide"]):
+        st.markdown(T["guide_md"])
 
 
 # 9. Footer Branding (Always Fixed at Screen Bottom)
