@@ -664,17 +664,24 @@ def build_svg_block(charts_to_render):
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
-            dx, dy = pts_f[diff_idx]
-            dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
-            # Smart sideways collision avoidance against High/Low temperature pins
-            if (max_idx == diff_idx and abs(dx - hx) < 42) or (min_idx == diff_idx and abs(dx - lx) < 42):
-                dx = min(W - PAD_R - 22, dx + 44) if dx + 44 <= W - PAD_R - 22 else max(PAD_L + 22, dx - 44)
+            # Pick the nearest hourly index to diff_idx whose X position doesn't clash with High (hx) or Low (lx) pills,
+            # then use THAT index's (x, y) point on pts_f so the pill stays strictly inline with the orange Feels-Like line.
+            best_idx = diff_idx
+            candidate_indices = sorted(range(1, 24), key=lambda idx: abs(idx - diff_idx))
+            for cand_idx in candidate_indices:
+                cand_x = max(PAD_L + 22, min(W - PAD_R - 22, pts_f[cand_idx][0]))
+                if abs(cand_x - hx) >= 44 and abs(cand_x - lx) >= 44:
+                    best_idx = cand_idx
+                    break
+
+            dx, dy = pts_f[best_idx]
+            dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            # Feels-like pill: Centered inline with graph curve (dy="3.5"), Gust pill background (#d1d5db), Feels-Like border (#d97706), Temp text (#ef4444)
+            # Feels-like pill: Centered directly on the orange Feels-Like curve (pts_f[best_idx])
             svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
