@@ -534,7 +534,6 @@ def build_svg_block(charts_to_render):
         h_val = int(slice_data["times"][i].split("T")[1][:2])
         is_night = (h_val >= ss_h) or (h_val < sr_h)
         
-        # Track night intervals
         if is_night and not in_night:
             in_night = True
             n_start = i
@@ -542,7 +541,6 @@ def build_svg_block(charts_to_render):
             in_night = False
             night_rects.append((x_pos(n_start), x_pos(i)))
             
-        # Track day intervals
         if not is_night and not in_day:
             in_day = True
             d_start = i
@@ -590,11 +588,11 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
-        # Render background shading (swapped: lighter daytime when dark theme / standard backgrounds)
+        # Swapped shading: Sunrise to sunset lighter (0.04), Sunset to sunrise darker (0.16)
         for dx1, dx2 in day_rects:
             svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.04)"/>')
         for nx1, nx2 in night_rects:
-            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.14)"/>')
+            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.16)"/>')
 
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
@@ -648,7 +646,7 @@ def build_svg_block(charts_to_render):
             dx, dy = pts_f[diff_idx]
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
-            # Avoid overlapping high/low pin boxes
+            # Shift sideways if clashing with high/low pins
             if (max_idx == diff_idx and abs(dx - hx) < 42) or (min_idx == diff_idx and abs(dx - lx) < 42):
                 dx = min(W - PAD_R - 22, dx + 44) if dx + 44 <= W - PAD_R - 22 else max(PAD_L + 22, dx - 44)
 
@@ -656,7 +654,7 @@ def build_svg_block(charts_to_render):
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
             svg_parts.append(f'<rect x="{dx-19}" y="{dy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#d97706" stroke-width="1.1" rx="3"/>')
-            svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="10.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
+            svg_parts.append(f'<text x="{dx}" y="{dy+3.8}" font-size="11" font-weight="800" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
@@ -708,7 +706,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
             svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
-        # GRAPH 3 (WIND — SLATE GREY #64748b & LIGHT SLATE #94a3b8)
+        # GRAPH 3 (WIND)
         elif metric == "wind":
             winds_raw = slice_data["wind"]
             gusts_raw = slice_data["gust"]
@@ -796,7 +794,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
 
-        # GRAPH 4 (VISIBILITY — TEAL #16a085)
+        # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
             vis_raw = slice_data["vis"]
             all_v = vis_raw + (slice_data_2["vis"] if slice_data_2 else [])
