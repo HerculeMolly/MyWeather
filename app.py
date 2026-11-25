@@ -67,9 +67,6 @@ city_name = st.session_state.city
 # 3. Lightweight Multilingual Dictionary (Concise & Clean)
 TRANSLATIONS = {
     "en": {
-        "exp_loc": "📍 Locations",
-        "exp_units": "⚙️ Units",
-        "exp_guide": "📖 Guide",
         "loc1_head": "Primary Location",
         "loc2_head": "2nd Location Overlay (Dotted Line)",
         "loc_placeholder": "UK Postcode, City, or Lat,Lon",
@@ -82,12 +79,10 @@ TRANSLATIONS = {
 * **Precipitation:** Blue curve shows rain probability & peak mm/24h.
 * **Wind:** Slate grey lines track speed and gusts with direction arrows.
 * **Visibility:** Teal gradient highlights tracking haze and hazard thresholds.
+* **Humidity / Pressure / UV / Pollen:** Supplemental environmental metrics.
         """,
     },
     "fr": {
-        "exp_loc": "📍 Lieux",
-        "exp_units": "⚙️ Unités",
-        "exp_guide": "📖 Guide",
         "loc1_head": "Lieu Principal",
         "loc2_head": "2e Lieu Superposé",
         "loc_placeholder": "Ville ou Lat,Lon",
@@ -103,9 +98,6 @@ TRANSLATIONS = {
         """,
     },
     "de": {
-        "exp_loc": "📍 Standorte",
-        "exp_units": "⚙️ Einheiten",
-        "exp_guide": "📖 Guide",
         "loc1_head": "Hauptstandort",
         "loc2_head": "2. Standort-Overlay",
         "loc_placeholder": "Stadt oder Lat,Lon",
@@ -121,9 +113,6 @@ TRANSLATIONS = {
         """,
     },
     "es": {
-        "exp_loc": "📍 Ubicaciones",
-        "exp_units": "⚙️ Unidades",
-        "exp_guide": "📖 Guía",
         "loc1_head": "Ubicación Principal",
         "loc2_head": "2ª Ubicación",
         "loc_placeholder": "Ciudad o Lat,Lon",
@@ -189,7 +178,7 @@ st.markdown(
         margin-right: 0px !important;
     }
 
-    /* Force 3 Equal Columns for Action Buttons in a Single No-Wrap Row */
+    /* Force 4 Equal Columns for Action Buttons in a Single No-Wrap Row */
     div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) {
         display: flex !important;
         flex-direction: row !important;
@@ -200,17 +189,17 @@ st.markdown(
     }
     div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
-        width: 33.333% !important;
+        width: 25% !important;
         min-width: 0 !important;
-        max-width: 33.333% !important;
+        max-width: 25% !important;
     }
     div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) button {
         width: 100% !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        font-size: 0.78rem !important;
-        padding: 4px 6px !important;
+        font-size: 0.95rem !important;
+        padding: 4px 2px !important;
     }
 
     /* Full-width dropdown box styling */
@@ -222,6 +211,8 @@ st.markdown(
         padding: 12px;
         margin-top: 4px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        width: 100% !important;
+        box-sizing: border-box;
     }
     .dropdown-box * {
         color: #ffffff !important;
@@ -428,7 +419,6 @@ else:
         return sliced
 
     uv_raw = get_slice("uv_index", 0.0)
-    # Simulated synthetic pollen on 0-5 scale
     pollen_raw = [round(max(0.0, 4.0 * math.sin((i / 24.0) * math.pi)), 1) for i in range(25)]
 
     slice_data = {
@@ -626,10 +616,8 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
-        # Daytime (sunrise to sunset): subtle light lift so it is always lighter on both light and dark themes
         for dx1, dx2 in day_rects:
             svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(255, 255, 255, 0.08)"/>')
-        # Nighttime (sunset to sunrise): subtle dark tint so it is always darker on both light and dark themes
         for nx1, nx2 in night_rects:
             svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.22)"/>')
 
@@ -1010,7 +998,6 @@ def build_svg_block(charts_to_render):
 
         # GRAPH 7 (COMBINED UV & POLLEN OVERLAY STRIP)
         elif metric == "uv_pollen":
-            # --- UV OVERLAY LAYER ---
             uv_raw = slice_data["uv"]
             uv_masked = []
             for i in range(25):
@@ -1020,14 +1007,12 @@ def build_svg_block(charts_to_render):
 
             pts_uv = make_points(uv_masked, 0, 12, top_pad, bot_pad)
             
-            # Subtle shading underneath UV line
             uv_area = f"M {pts_uv[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_uv) + f" L {pts_uv[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{uv_area}" fill="rgba(243, 156, 18, 0.12)"/>')
 
             uv_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_uv)
             svg_parts.append(f'<polyline points="{uv_str}" fill="none" stroke="#f39c12" stroke-width="2"/>')
 
-            # UV High Pill(s) inline
             uv_peaks = []
             max_uv = max(uv_masked)
             if max_uv > 0.5:
@@ -1040,14 +1025,12 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{ux-18}" y="{uy-6.5}" width="36" height="13" fill="#1f1f1f" stroke="#f39c12" stroke-width="0.85" rx="2.5"/>')
                 svg_parts.append(f'<text x="{ux}" y="{uy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">UV {u_val}</text>')
 
-            # --- POLLEN OVERLAY LAYER ---
             pollen_raw = slice_data["pollen"]
             pts_pol = make_points(pollen_raw, 0, 5, top_pad, bot_pad)
 
             pol_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_pol)
             svg_parts.append(f'<polyline points="{pol_str}" fill="none" stroke="#27ae60" stroke-width="2.2"/>')
 
-            # Dynamic Pollen rating pills with collision avoidance
             poll_pill_indices = [4, 12, 20]
             last_x = -999
             for p_idx in poll_pill_indices:
@@ -1062,7 +1045,6 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<text x="{px}" y="{py+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{rating_label}</text>')
                 last_x = px
 
-            # Combined Icon & Label
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="10" font-weight="700" fill="currentColor">UV/Pol</text>')
 
@@ -1072,16 +1054,43 @@ def build_svg_block(charts_to_render):
 
 
 # ==========================================
-# UNIFIED TOGGLE BUTTON (LOCKED POSITION AT THE TOP)
+# 4-BUTTON ICON ROW (MUTUALLY EXCLUSIVE EXPANDERS)
 # ==========================================
-toggle_label = "Hide Extra Metrics (DropBox)" if st.session_state.show_overlay else "🔍 More Metrics (DropBox)"
-if st.button(toggle_label, use_container_width=True):
-    st.session_state.show_overlay = not st.session_state.show_overlay
-    st.rerun()
+if "active_expander" not in st.session_state:
+    st.session_state.active_expander = None
+
+col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+
+with col_b1:
+    open_1 = (st.session_state.active_expander == "loc")
+    if st.button("📍", use_container_width=True, key="btn_loc"):
+        st.session_state.active_expander = None if open_1 else "loc"
+        st.rerun()
+
+with col_b2:
+    open_2 = (st.session_state.active_expander == "units")
+    if st.button("⚙️", use_container_width=True, key="btn_units"):
+        st.session_state.active_expander = None if open_2 else "units"
+        st.rerun()
+
+with col_b3:
+    open_3 = (st.session_state.active_expander == "guide")
+    if st.button("📖", use_container_width=True, key="btn_guide"):
+        st.session_state.active_expander = None if open_3 else "guide"
+        st.rerun()
+
+with col_b4:
+    open_4 = (st.session_state.active_expander == "overlay")
+    if st.button("➕", use_container_width=True, key="btn_overlay"):
+        st.session_state.active_expander = None if open_4 else "overlay"
+        st.rerun()
+
+# Sync overlay state with expander selection
+st.session_state.show_overlay = (st.session_state.active_expander == "overlay")
 
 
 # ==========================================
-# IN-PLACE SLOT SWAP: GRAPHS 1-4 OR OVERLAY GRAPHS
+# GRAPHS DISPLAY SLOT (PRIMARY OR OVERLAY)
 # ==========================================
 if not st.session_state.show_overlay:
     build_svg_block(["temp", "precip", "wind", "vis"])
@@ -1120,31 +1129,9 @@ def resolve_location_string(query_str):
     return None
 
 
-# 8. Mutually Exclusive Expanders in a Persistent 3-Button Row
-if "active_expander" not in st.session_state:
-    st.session_state.active_expander = None
-
-col_e1, col_e2, col_e3 = st.columns(3)
-
-with col_e1:
-    open_1 = (st.session_state.active_expander == "loc")
-    if st.button(T["exp_loc"], use_container_width=True, key="btn_loc"):
-        st.session_state.active_expander = None if open_1 else "loc"
-        st.rerun()
-
-with col_e2:
-    open_2 = (st.session_state.active_expander == "units")
-    if st.button(T["exp_units"], use_container_width=True, key="btn_units"):
-        st.session_state.active_expander = None if open_2 else "units"
-        st.rerun()
-
-with col_e3:
-    open_3 = (st.session_state.active_expander == "guide")
-    if st.button(T["exp_guide"], use_container_width=True, key="btn_guide"):
-        st.session_state.active_expander = None if open_3 else "guide"
-        st.rerun()
-
-# Render only the active drawer contents full width below the button row
+# ==========================================
+# RENDER ACTIVE EXPANDER CONTENT (FULL WIDTH BELOW BUTTONS)
+# ==========================================
 if st.session_state.active_expander == "loc":
     with st.container():
         st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
@@ -1230,7 +1217,7 @@ st.markdown(
     """
     <div class="footer-container">
         <div>
-            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
+            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size:0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
         </div>
         <div class="brand-text">
             <a href="https://herculemolly.co.uk" target="_blank" class="brand-name">Hercule Molly</a>
