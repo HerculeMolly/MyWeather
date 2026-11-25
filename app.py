@@ -17,7 +17,7 @@ if "refresh" in st.query_params:
     del st.query_params["refresh"]
     st.rerun()
 
-# 2. Persistent State Defaults
+# 2. Persistent State Defaults & Startup Loaders
 if "unit_temp" not in st.session_state:
     st.session_state.unit_temp = "C"
 if "unit_wind" not in st.session_state:
@@ -28,6 +28,19 @@ if "loc2_enabled" not in st.session_state:
     st.session_state.loc2_enabled = True
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
+
+# Load 2nd Location from Query Params immediately at startup if present
+if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
+    try:
+        st.session_state.loc2 = {
+            "lat": float(st.query_params["loc2_lat"]),
+            "lon": float(st.query_params["loc2_lon"]),
+            "name": st.query_params.get("loc2_name", "2nd Location")
+        }
+    except Exception:
+        st.session_state.loc2 = None
+elif "loc2" not in st.session_state:
+    st.session_state.loc2 = None
 
 # Primary Geolocation & Persistent State
 if "lat" in st.query_params and "lon" in st.query_params:
@@ -63,19 +76,6 @@ if "lat" not in st.session_state:
 lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
-
-# 2nd Location State & Query Parameter Sync
-if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
-    try:
-        st.session_state.loc2 = {
-            "lat": float(st.query_params["loc2_lat"]),
-            "lon": float(st.query_params["loc2_lon"]),
-            "name": st.query_params.get("loc2_name", "2nd Location")
-        }
-    except Exception:
-        st.session_state.loc2 = None
-elif "loc2" not in st.session_state:
-    st.session_state.loc2 = None
 
 # 3. Lightweight Multilingual Dictionary (Concise & Clean)
 TRANSLATIONS = {
@@ -1171,7 +1171,6 @@ if st.session_state.active_expander == "loc":
                 st.session_state.lat = 52.5785
                 st.session_state.lon = -0.1285
                 st.session_state.city = "Peterborough"
-                # Keep query params clean except loc2 if present
                 loc2_cache = st.session_state.loc2
                 st.query_params.clear()
                 if loc2_cache:
