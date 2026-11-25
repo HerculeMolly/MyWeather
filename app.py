@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Strict 3-Button Row & Readable Dropdown Styling)
+# 4. Shared WashDry CSS Architecture
 st.markdown(
     """
     <style>
@@ -673,8 +673,8 @@ def build_svg_block(charts_to_render):
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            # Feels-like pill with red text (#ef4444) and matching red border (#ef4444)
-            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#ef4444" stroke-width="0.85" rx="2.5"/>')
+            # Feels-like pill: Background = Gust pill (#d1d5db), Border = Feels-Like line (#d97706), Text = Temp line (#ef4444)
+            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
