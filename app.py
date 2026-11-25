@@ -210,9 +210,6 @@ st.markdown(
         filter: saturate(35%) opacity(0.75);
     }
 
-    /* =======================================================
-       FORCED EQUAL-WIDTH FLEX ROW FOR 3 SELECTBOXES
-       ======================================================= */
     div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -489,7 +486,7 @@ with col_head:
         f"""
         <div style="display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap;">
             <h1 style="margin: 0; font-size: 1.3rem; font-weight: 800; line-height: 1.1;">MyWeather</h1>
-            <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">↙ {timestamp_str}</span>
+            <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">{timestamp_str}</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
             <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85;">📍 {city_name}{loc2_pill}</div>
@@ -526,19 +523,37 @@ def build_svg_block(charts_to_render):
     sr_h = sunrise_hours[0]
     ss_h = sunset_hours[0]
     night_rects = []
+    day_rects = []
+    
     in_night = False
     n_start = 0
+    in_day = False
+    d_start = 0
+
     for i in range(25):
         h_val = int(slice_data["times"][i].split("T")[1][:2])
         is_night = (h_val >= ss_h) or (h_val < sr_h)
+        
+        # Track night intervals
         if is_night and not in_night:
             in_night = True
             n_start = i
         elif not is_night and in_night:
             in_night = False
             night_rects.append((x_pos(n_start), x_pos(i)))
+            
+        # Track day intervals
+        if not is_night and not in_day:
+            in_day = True
+            d_start = i
+        elif is_night and in_day:
+            in_day = False
+            day_rects.append((x_pos(d_start), x_pos(i)))
+
     if in_night:
         night_rects.append((x_pos(n_start), x_pos(24)))
+    if in_day:
+        day_rects.append((x_pos(d_start), x_pos(24)))
 
     midnight_x = x_pos(12)
     for i in range(25):
@@ -575,8 +590,11 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
+        # Render background shading (swapped: lighter daytime when dark theme / standard backgrounds)
+        for dx1, dx2 in day_rects:
+            svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.04)"/>')
         for nx1, nx2 in night_rects:
-            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.12)"/>')
+            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.14)"/>')
 
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
@@ -623,23 +641,22 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#ef4444" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
+            # Feels-like inline pill calculation with intelligent collision shift
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
-            
+
+            # Avoid overlapping high/low pin boxes
+            if (max_idx == diff_idx and abs(dx - hx) < 42) or (min_idx == diff_idx and abs(dx - lx) < 42):
+                dx = min(W - PAD_R - 22, dx + 44) if dx + 44 <= W - PAD_R - 22 else max(PAD_L + 22, dx - 44)
+
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
-            text_y_pos = dy - 10 if max_diff >= 0 else dy + 15
 
-            svg_parts.append(f'<rect x="{dx-19}" y="{text_y_pos-9}" width="38" height="14" fill="#d1d5db" stroke="#d97706" stroke-width="1" rx="2"/>')
-            svg_parts.append(f'<text x="{dx}" y="{text_y_pos}" font-size="10" font-weight="600" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
-            
-            if max_diff < 0:
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos+3}" x2="{dx+17}" y2="{text_y_pos+3}" stroke="#d97706" stroke-width="1.3"/>')
-            else:
-                svg_parts.append(f'<line x1="{dx-17}" y1="{text_y_pos-11}" x2="{dx+17}" y2="{text_y_pos-11}" stroke="#ef4444" stroke-width="1.3"/>')
+            svg_parts.append(f'<rect x="{dx-19}" y="{dy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#d97706" stroke-width="1.1" rx="3"/>')
+            svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="10.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
@@ -961,7 +978,6 @@ with st.expander(T["drawer_title"]):
 
     st.markdown(f"#### {T['units_head']}")
     
-    # Render selectors inside a targeted container mapped to the CSS flex rule
     container_settings = st.container(key="settings_row")
     with container_settings:
         c1, c2, c3 = st.columns(3)
