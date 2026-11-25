@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Forced 3-Column Equal Row on Mobile)
+# 4. Shared WashDry CSS Architecture (Full-Width Dropdown Boxes)
 st.markdown(
     """
     <style>
@@ -189,7 +189,7 @@ st.markdown(
         margin-right: 0px !important;
     }
 
-    /* Force 3 Equal Columns for Expanders across all screen widths (Mobile & Desktop) */
+    /* Force 3 Equal Columns for Expanders in a single row */
     div[data-testid="stHorizontalBlock"]:has(div.stExpander) {
         display: flex !important;
         flex-direction: row !important;
@@ -197,12 +197,14 @@ st.markdown(
         gap: 6px !important;
         width: 100% !important;
         align-items: flex-start !important;
+        position: relative !important;
     }
     div[data-testid="stHorizontalBlock"]:has(div.stExpander) > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
         width: 33.333% !important;
         min-width: 0 !important;
         max-width: 33.333% !important;
+        position: static !important;
     }
     div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander summary {
         padding-left: 4px !important;
@@ -211,6 +213,24 @@ st.markdown(
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+    }
+
+    /* Make expanded drop-down content span full screen width */
+    div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander[data-baseweb="accordion"] {
+        position: static !important;
+    }
+    .stExpander details[open] {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 999 !important;
+        background-color: var(--background-color, #1e1e1e);
+        border: 1px solid rgba(128, 128, 128, 0.4);
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        padding: 8px 12px;
+        margin-top: 2px;
     }
 
     .stExpander {
@@ -940,7 +960,7 @@ def resolve_location_string(query_str):
     return None
 
 
-# 8. Three Equal-Width Expanders Locked in a Single Horizontal Row
+# 8. Three Equal-Width Expanders with Full-Width Dropdown Panels
 col_e1, col_e2, col_e3 = st.columns(3)
 
 with col_e1:
