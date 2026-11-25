@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Full-Width Dropdown Boxes)
+# 4. Shared WashDry CSS Architecture (Readable Expander Background Fix)
 st.markdown(
     """
     <style>
@@ -215,7 +215,7 @@ st.markdown(
         text-overflow: ellipsis !important;
     }
 
-    /* Make expanded drop-down content span full screen width */
+    /* Make expanded drop-down content span full screen width with theme-safe background */
     div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander[data-baseweb="accordion"] {
         position: static !important;
     }
@@ -225,7 +225,7 @@ st.markdown(
         right: 0 !important;
         width: 100% !important;
         z-index: 999 !important;
-        background-color: var(--background-color, #1e1e1e);
+        background-color: var(--secondary-background-color, #262730) !important;
         border: 1px solid rgba(128, 128, 128, 0.4);
         border-radius: 6px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.3);
@@ -679,8 +679,9 @@ def build_svg_block(charts_to_render):
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            svg_parts.append(f'<rect x="{dx-19}" y="{dy-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#d97706" stroke-width="1.1" rx="3"/>')
-            svg_parts.append(f'<text x="{dx}" y="{dy+3.8}" font-size="11" font-weight="800" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
+            # Feels-like pill styled like the Wind Gust pill (#d1d5db fill, #94a3b8 stroke, dark text)
+            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">{delta_label}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
