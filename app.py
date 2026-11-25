@@ -665,8 +665,6 @@ def build_svg_block(charts_to_render):
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
 
-            # Pick the nearest hourly index to diff_idx whose X position doesn't clash with High (hx) or Low (lx) pills,
-            # then use THAT index's (x, y) point on pts_f so the pill stays strictly inline with the orange Feels-Like line.
             best_idx = diff_idx
             candidate_indices = sorted(range(1, 24), key=lambda idx: abs(idx - diff_idx))
             for cand_idx in candidate_indices:
@@ -681,7 +679,6 @@ def build_svg_block(charts_to_render):
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            # Feels-like pill: Centered directly on the orange Feels-Like curve (pts_f[best_idx])
             svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
@@ -909,6 +906,98 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{unit_label}</text>')
 
+        # GRAPH 5 (HUMIDITY)
+        elif metric == "hum":
+            hums_raw = slice_data["hum"]
+            min_h, max_h = 0, 100
+            pts_h = make_points(hums_raw, min_h, max_h, top_pad, bot_pad)
+
+            # Subtly shaded area underneath
+            area_str = f"M {pts_h[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_h) + f" L {pts_h[-1][0]:.1f},{bot_pad} Z"
+            svg_parts.append(f'<path d="{area_str}" fill="rgba(79, 131, 204, 0.15)"/>')
+
+            # Solid distinct blue line (#4f83cc — softer than rain #2980b9)
+            h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
+            svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#4f83cc" stroke-width="2.2"/>')
+
+            max_h_val = max(hums_raw)
+            min_h_val = min(hums_raw)
+            max_h_int = int(round(max_h_val))
+            min_h_int = int(round(min_h_val))
+            max_h_idx = hums_raw.index(max_h_val)
+            min_h_idx = hums_raw.index(min_h_val)
+
+            hhx, hhy = pts_h[max_h_idx]
+            lhx, lhy = pts_h[min_h_idx]
+            hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
+            lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
+
+            # Inline High/Low pills with border matching graph line (#4f83cc)
+            svg_parts.append(f'<rect x="{hhx-19}" y="{hhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}%</text>')
+
+            svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}%</text>')
+
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
+            svg_parts.append('<path d="M0 -5 C-3 -1, -4 1, -4 3 A 4 4 0 0 0 4 3 C 4 1, 3 -1, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
+            svg_parts.append('</g>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">H</text>')
+
+        # GRAPH 6 (PRESSURE)
+        elif metric == "press":
+            press_raw = slice_data["press"]
+            min_p = math.floor(min(press_raw) - 2)
+            max_p = math.ceil(max(press_raw) + 2)
+            pts_p = make_points(press_raw, min_p, max_p, top_pad, bot_pad)
+
+            # Solid line, no shading
+            p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
+            svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#8e44ad" stroke-width="2.2"/>')
+
+            max_p_val = max(press_raw)
+            min_p_val = min(press_raw)
+            max_p_int = int(round(max_p_val))
+            min_p_int = int(round(min_p_val))
+            max_p_idx = press_raw.index(max_p_val)
+            min_p_idx = press_raw.index(min_p_val)
+
+            hpx, hpy = pts_p[max_p_idx]
+            lpx, lpy = pts_p[min_p_idx]
+            hpx = max(PAD_L + 24, min(W - PAD_R - 24, hpx))
+            lpx = max(PAD_L + 24, min(W - PAD_R - 24, lpx))
+
+            # Inline High/Low pills with border matching graph line (#8e44ad)
+            svg_parts.append(f'<rect x="{hpx-22}" y="{hpy-6.5}" width="44" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{hpx}" y="{hpy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_p_int}</text>')
+
+            svg_parts.append(f'<rect x="{lpx-22}" y="{lpy-6.5}" width="44" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{lpx}" y="{lpy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_p_int}</text>')
+
+            # 3-hour pressure change detection
+            if len(press_raw) >= 4:
+                diff_3h = press_raw[3] - press_raw[0]
+                if abs(diff_3h) >= 3.0:
+                    arrow_sym = "↓" if diff_3h < 0 else "↑"
+                    trend_txt = f"{arrow_sym} {abs(int(round(diff_3h)))}"
+                    
+                    # Position near hour 3 or shift sideways to avoid High/Low pill clashes
+                    tx, ty = pts_p[3]
+                    tx = max(PAD_L + 20, min(W - PAD_R - 20, tx))
+                    if abs(tx - hpx) < 35 or abs(tx - lpx) < 35:
+                        tx = min(W - PAD_R - 20, tx + 38) if tx + 38 <= W - PAD_R - 20 else max(PAD_L + 20, tx - 38)
+
+                    svg_parts.append(f'<rect x="{tx-18}" y="{ty+5}" width="36" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
+                    svg_parts.append(f'<text x="{tx}" y="{ty+14.5}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">{trend_txt}</text>')
+
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
+            svg_parts.append('<circle cx="0" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.1"/>')
+            svg_parts.append('<path d="M-2 -1.5 L0 -4 L2 -1.5" fill="none" stroke="currentColor" stroke-width="1.1"/>')
+            svg_parts.append('</g>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">hPa</text>')
+
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
     st.markdown(f'<div class="{wrapper_cls}">{"".join(svg_parts)}</div>', unsafe_allow_html=True)
@@ -929,7 +1018,7 @@ if st.button(toggle_label, use_container_width=True):
 if not st.session_state.show_overlay:
     build_svg_block(["temp", "precip", "wind", "vis"])
 else:
-    build_svg_block(["uv", "hum_press"])
+    build_svg_block(["hum", "press"])
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
