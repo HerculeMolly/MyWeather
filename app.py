@@ -76,10 +76,10 @@ TRANSLATIONS = {
         "units_head": "Units & Language Settings",
         "guide_md": """
 * **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance.
-* **Precipitation:** Blue curve shows rain probability & peak mm/24h.
+* **Precip / Humidity:** Blue curve shows rain probability & peak mm/24h; teal line tracks humidity.
 * **Wind:** Slate grey lines track speed and gusts with direction arrows.
 * **Visibility:** Teal gradient highlights tracking haze and hazard thresholds.
-* **Humidity / Pressure / UV / Pollen:** Supplemental environmental metrics.
+* **Pressure / UV / Pollen:** Supplemental environmental metrics.
         """,
     },
     "fr": {
@@ -92,7 +92,7 @@ TRANSLATIONS = {
         "units_head": "Unités & Langue",
         "guide_md": """
 * **Température & Ressenti :** Ligne rouge (réel) & orange (ressenti).
-* **Précipitations :** Risque de pluie et cumul mm.
+* **Précipitations & Humidité :** Risque de pluie, cumul mm & taux d'humidité.
 * **Vent :** Vitesse, rafales et orientation.
 * **Visibilité :** Suivi des seuils de brume et de brouillard.
         """,
@@ -107,7 +107,7 @@ TRANSLATIONS = {
         "units_head": "Einheiten & Sprache",
         "guide_md": """
 * **Temperatur:** Rot = Lufttemperatur, Orange = Gefühlt.
-* **Niederschlag:** Regenwahrscheinlichkeit & mm.
+* **Niederschlag & Feuchte:** Regenwahrscheinlichkeit & Luftfeuchtigkeit.
 * **Wind:** Geschwindigkeit, Böen & Windrichtung.
 * **Sichtweite:** Horizontale Sicht und Warnschwellen.
         """,
@@ -122,7 +122,7 @@ TRANSLATIONS = {
         "units_head": "Unidades e Idioma",
         "guide_md": """
 * **Temperatura:** Roja = real; naranja = sensación térmica.
-* **Precipitación:** Probabilidad de lluvia y mm.
+* **Precipitación y Humedad:** Probabilidad de lluvia y humedad relativa.
 * **Viento:** Velocidad, ráfagas y dirección.
 * **Visibilidad:** Seguimiento de calima y niebla.
         """,
@@ -695,12 +695,16 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
-        # GRAPH 2 (PRECIPITATION — BLUE)
-        elif metric == "precip":
+        # GRAPH 2 (COMBINED PRECIPITATION PROBABILITY & HUMIDITY)
+        elif metric == "precip_hum":
             probs = slice_data["precipitation_probability"] if "precipitation_probability" in slice_data else slice_data["precip_prob"]
             mms = slice_data["precipitation"] if "precipitation" in slice_data else slice_data["precip_mm"]
-            pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
+            hums_raw = slice_data["hum"]
 
+            pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
+            pts_h = make_points(hums_raw, 0, 100, top_pad, bot_pad)
+
+            # Precipitation Probability area fill & curve
             area_str = f"M {pts_p[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p) + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.22)"/>')
 
@@ -712,6 +716,11 @@ def build_svg_block(charts_to_render):
                 p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
                 svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
+            # Humidity solid line in Teal (#16a085)
+            h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
+            svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#16a085" stroke-width="2.2"/>')
+
+            # Rain probability peak pill
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
             px_prob, py_prob = pts_p[max_prob_idx]
@@ -720,6 +729,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
 
+            # Rainfall mm peak pill
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
@@ -728,6 +738,32 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
+            # Humidity High / Low pills with intelligent collision avoidance against rain pills
+            max_h_val = max(hums_raw)
+            min_h_val = min(hums_raw)
+            max_h_int = int(round(max_h_val))
+            min_h_int = int(round(min_h_val))
+            max_h_idx = hums_raw.index(max_h_val)
+            min_h_idx = hums_raw.index(min_h_val)
+
+            hhx, hhy = pts_h[max_h_idx]
+            lhx, lhy = pts_h[min_h_idx]
+            hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
+            lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
+
+            # Shift sideways if clashing with rain pill coordinate
+            if abs(hhx - px_prob) < 38 and abs(hhy - py_prob) < 18:
+                hhx = min(W - PAD_R - 22, hhx + 42) if hhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, hhx - 42)
+            if abs(lhx - px_prob) < 38 and abs(lhy - py_prob) < 18:
+                lhx = min(W - PAD_R - 22, lhx + 42) if lhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, lhx - 42)
+
+            svg_parts.append(f'<rect x="{hhx-19}" y="{hhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}%</text>')
+
+            svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}%</text>')
+
+            # Combined Icon & Total rainfall
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
@@ -912,43 +948,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{unit_label}</text>')
 
-        # GRAPH 5 (HUMIDITY)
-        elif metric == "hum":
-            hums_raw = slice_data["hum"]
-            min_h, max_h = 0, 100
-            pts_h = make_points(hums_raw, min_h, max_h, top_pad, bot_pad)
-
-            area_str = f"M {pts_h[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_h) + f" L {pts_h[-1][0]:.1f},{bot_pad} Z"
-            svg_parts.append(f'<path d="{area_str}" fill="rgba(79, 131, 204, 0.15)"/>')
-
-            h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
-            svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#4f83cc" stroke-width="2.2"/>')
-
-            max_h_val = max(hums_raw)
-            min_h_val = min(hums_raw)
-            max_h_int = int(round(max_h_val))
-            min_h_int = int(round(min_h_val))
-            max_h_idx = hums_raw.index(max_h_val)
-            min_h_idx = hums_raw.index(min_h_val)
-
-            hhx, hhy = pts_h[max_h_idx]
-            lhx, lhy = pts_h[min_h_idx]
-            hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
-            lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
-
-            svg_parts.append(f'<rect x="{hhx-19}" y="{hhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}</text>')
-
-            svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
-
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
-            svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M0 -5 C-3 -1, -4 1, -4 3 A 4 4 0 0 0 4 3 C 4 1, 3 -1, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
-            svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
-
-        # GRAPH 6 (PRESSURE)
+        # GRAPH 5 (PRESSURE)
         elif metric == "press":
             press_raw = slice_data["press"]
             min_p = math.floor(min(press_raw) - 2)
@@ -997,7 +997,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">hPa</text>')
 
-        # GRAPH 7 (COMBINED UV & POLLEN OVERLAY STRIP)
+        # GRAPH 6 (COMBINED UV & POLLEN OVERLAY STRIP)
         elif metric == "uv_pollen":
             uv_raw = slice_data["uv"]
             uv_masked = []
@@ -1201,11 +1201,11 @@ elif st.session_state.active_expander == "guide":
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # Default view: show primary graphs or overlay graphs depending on whether '➕' is active
+    # Default view: show primary graphs (Temp, Precip/Humidity combined, Wind, Visibility) or overlay graphs (Pressure, UV/Pollen)
     if st.session_state.active_expander != "overlay":
-        build_svg_block(["temp", "precip", "wind", "vis"])
+        build_svg_block(["temp", "precip_hum", "wind", "vis"])
     else:
-        build_svg_block(["hum", "press", "uv_pollen"])
+        build_svg_block(["press", "uv_pollen"])
 
 
 # 9. Footer Branding (Always Fixed at Screen Bottom)
