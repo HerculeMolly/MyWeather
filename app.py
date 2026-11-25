@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Readable Expander Background Fix)
+# 4. Shared WashDry CSS Architecture (Forced Non-Black Expander Backgrounds)
 st.markdown(
     """
     <style>
@@ -215,7 +215,7 @@ st.markdown(
         text-overflow: ellipsis !important;
     }
 
-    /* Make expanded drop-down content span full screen width with theme-safe background */
+    /* Make expanded drop-down content span full screen width with solid readable surface */
     div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander[data-baseweb="accordion"] {
         position: static !important;
     }
@@ -225,12 +225,26 @@ st.markdown(
         right: 0 !important;
         width: 100% !important;
         z-index: 999 !important;
-        background-color: var(--secondary-background-color, #262730) !important;
-        border: 1px solid rgba(128, 128, 128, 0.4);
+        background-color: #1e1e1e !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(128, 128, 128, 0.5);
         border-radius: 6px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-        padding: 8px 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        padding: 10px 14px;
         margin-top: 2px;
+    }
+    .stExpander details[open] * {
+        color: #ffffff !important;
+    }
+    .stExpander details[open] input {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+    .stExpander details[open] button {
+        background-color: #333333 !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
     }
 
     .stExpander {
@@ -679,7 +693,6 @@ def build_svg_block(charts_to_render):
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            # Feels-like pill styled like the Wind Gust pill (#d1d5db fill, #94a3b8 stroke, dark text)
             svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">{delta_label}</text>')
 
@@ -961,11 +974,40 @@ def resolve_location_string(query_str):
     return None
 
 
-# 8. Three Equal-Width Expanders with Full-Width Dropdown Panels
+# 8. Mutually Exclusive Expanders in a Persistent 3-Button Row
+if "active_expander" not in st.session_state:
+    st.session_state.active_expander = None
+
 col_e1, col_e2, col_e3 = st.columns(3)
 
 with col_e1:
-    with st.expander(T["exp_loc"]):
+    open_1 = (st.session_state.active_expander == "loc")
+    # Using an interactive button to control open state cleanly so other expanders close
+    if st.button(T["exp_loc"], use_container_width=True):
+        st.session_state.active_expander = None if open_1 else "loc"
+        st.rerun()
+
+with col_e2:
+    open_2 = (st.session_state.active_expander == "units")
+    if st.button(T["exp_units"], use_container_width=True):
+        st.session_state.active_expander = None if open_2 else "units"
+        st.rerun()
+
+with col_e3:
+    open_3 = (st.session_state.active_expander == "guide")
+    if st.button(T["exp_guide"], use_container_width=True):
+        st.session_state.active_expander = None if open_3 else "guide"
+        st.rerun()
+
+# Render only the active drawer contents full width below the button row
+if st.session_state.active_expander == "loc":
+    with st.container():
+        st.markdown(
+            """
+            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            """,
+            unsafe_allow_html=True,
+        )
         st.markdown(f"**{T['loc1_head']}**")
         with st.form(key="loc1_form"):
             q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -976,6 +1018,7 @@ with col_e1:
                     st.query_params["lat"] = str(res1[0])
                     st.query_params["lon"] = str(res1[1])
                     st.query_params["city"] = res1[2]
+                    st.session_state.active_expander = None
                     st.rerun()
                 else:
                     st.error("Location not found.")
@@ -984,8 +1027,9 @@ with col_e1:
             if st.button(T["reset_btn"], use_container_width=True):
                 st.session_state.lat = 52.5785
                 st.session_state.lon = -0.1285
-                st.session_state.city = "Peterborough"
+                st.session_state.city = "Peterborough.xlsx" if False else "Peterborough"
                 st.query_params.clear()
+                st.session_state.active_expander = None
                 st.rerun()
 
         st.markdown(f"**{T['loc2_head']}**")
@@ -995,6 +1039,7 @@ with col_e1:
                 res2 = resolve_location_string(q2)
                 if res2:
                     st.session_state.loc2 = {"lat": res2[0], "lon": res2[1], "name": res2[2]}
+                    st.session_state.active_expander = None
                     st.rerun()
                 else:
                     st.error("2nd Location not found.")
@@ -1002,10 +1047,18 @@ with col_e1:
         if st.session_state.loc2:
             if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True):
                 st.session_state.loc2 = None
+                st.session_state.active_expander = None
                 st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-with col_e2:
-    with st.expander(T["exp_units"]):
+elif st.session_state.active_expander == "units":
+    with st.container():
+        st.markdown(
+            """
+            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            """,
+            unsafe_allow_html=True,
+        )
         st.markdown(f"**{T['units_head']}**")
         t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
         if t_choice != st.session_state.unit_temp:
@@ -1028,10 +1081,18 @@ with col_e2:
         if l_choice != st.session_state.lang:
             st.session_state.lang = l_choice
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-with col_e3:
-    with st.expander(T["exp_guide"]):
+elif st.session_state.active_expander == "guide":
+    with st.container():
+        st.markdown(
+            """
+            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            """,
+            unsafe_allow_html=True,
+        )
         st.markdown(T["guide_md"])
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # 9. Footer Branding (Always Fixed at Screen Bottom)
