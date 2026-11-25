@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Forced Non-Black Expander Backgrounds)
+# 4. Shared WashDry CSS Architecture (Strict 3-Button Row & Readable Dropdown Styling)
 st.markdown(
     """
     <style>
@@ -189,67 +189,47 @@ st.markdown(
         margin-right: 0px !important;
     }
 
-    /* Force 3 Equal Columns for Expanders in a single row */
-    div[data-testid="stHorizontalBlock"]:has(div.stExpander) {
+    /* Force 3 Equal Columns for Action Buttons in a Single No-Wrap Row */
+    div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 6px !important;
         width: 100% !important;
-        align-items: flex-start !important;
-        position: relative !important;
+        align-items: center !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(div.stExpander) > div[data-testid="stColumn"] {
+    div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
         width: 33.333% !important;
         min-width: 0 !important;
         max-width: 33.333% !important;
-        position: static !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander summary {
-        padding-left: 4px !important;
-        padding-right: 2px !important;
-        font-size: 0.78rem !important;
+    div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) button {
+        width: 100% !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+        font-size: 0.78rem !important;
+        padding: 4px 6px !important;
     }
 
-    /* Make expanded drop-down content span full screen width with solid readable surface */
-    div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander[data-baseweb="accordion"] {
-        position: static !important;
-    }
-    .stExpander details[open] {
-        position: absolute !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100% !important;
-        z-index: 999 !important;
+    /* Full-width dropdown box styling */
+    .dropdown-box {
         background-color: #1e1e1e !important;
         color: #ffffff !important;
-        border: 1px solid rgba(128, 128, 128, 0.5);
+        border: 1px solid rgba(128,128,128,0.5);
         border-radius: 6px;
+        padding: 12px;
+        margin-top: 4px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        padding: 10px 14px;
-        margin-top: 2px;
     }
-    .stExpander details[open] * {
+    .dropdown-box * {
         color: #ffffff !important;
     }
-    .stExpander details[open] input {
+    .dropdown-box input {
         background-color: #2d2d2d !important;
         color: #ffffff !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
-    }
-    .stExpander details[open] button {
-        background-color: #333333 !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255,255,255,0.3) !important;
-    }
-
-    .stExpander {
-        margin-top: 2px !important;
-        margin-bottom: 2px !important;
     }
 
     .stale-badge {
@@ -693,8 +673,9 @@ def build_svg_block(charts_to_render):
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#1f1f1f" text-anchor="middle">{delta_label}</text>')
+            # Feels-like pill with red text (#ef4444) and matching red border (#ef4444)
+            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#ef4444" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
@@ -982,32 +963,26 @@ col_e1, col_e2, col_e3 = st.columns(3)
 
 with col_e1:
     open_1 = (st.session_state.active_expander == "loc")
-    # Using an interactive button to control open state cleanly so other expanders close
-    if st.button(T["exp_loc"], use_container_width=True):
+    if st.button(T["exp_loc"], use_container_width=True, key="btn_loc"):
         st.session_state.active_expander = None if open_1 else "loc"
         st.rerun()
 
 with col_e2:
     open_2 = (st.session_state.active_expander == "units")
-    if st.button(T["exp_units"], use_container_width=True):
+    if st.button(T["exp_units"], use_container_width=True, key="btn_units"):
         st.session_state.active_expander = None if open_2 else "units"
         st.rerun()
 
 with col_e3:
     open_3 = (st.session_state.active_expander == "guide")
-    if st.button(T["exp_guide"], use_container_width=True):
+    if st.button(T["exp_guide"], use_container_width=True, key="btn_guide"):
         st.session_state.active_expander = None if open_3 else "guide"
         st.rerun()
 
 # Render only the active drawer contents full width below the button row
 if st.session_state.active_expander == "loc":
     with st.container():
-        st.markdown(
-            """
-            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
         st.markdown(f"**{T['loc1_head']}**")
         with st.form(key="loc1_form"):
             q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -1024,10 +999,10 @@ if st.session_state.active_expander == "loc":
                     st.error("Location not found.")
 
         if st.session_state.city != "Peterborough":
-            if st.button(T["reset_btn"], use_container_width=True):
+            if st.button(T["reset_btn"], use_container_width=True, key="reset_loc_btn"):
                 st.session_state.lat = 52.5785
                 st.session_state.lon = -0.1285
-                st.session_state.city = "Peterborough.xlsx" if False else "Peterborough"
+                st.session_state.city = "Peterborough"
                 st.query_params.clear()
                 st.session_state.active_expander = None
                 st.rerun()
@@ -1045,7 +1020,7 @@ if st.session_state.active_expander == "loc":
                     st.error("2nd Location not found.")
 
         if st.session_state.loc2:
-            if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True):
+            if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True, key="clear_loc2_btn"):
                 st.session_state.loc2 = None
                 st.session_state.active_expander = None
                 st.rerun()
@@ -1053,12 +1028,7 @@ if st.session_state.active_expander == "loc":
 
 elif st.session_state.active_expander == "units":
     with st.container():
-        st.markdown(
-            """
-            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
         st.markdown(f"**{T['units_head']}**")
         t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
         if t_choice != st.session_state.unit_temp:
@@ -1085,12 +1055,7 @@ elif st.session_state.active_expander == "units":
 
 elif st.session_state.active_expander == "guide":
     with st.container():
-        st.markdown(
-            """
-            <div style="background-color: #1e1e1e; color: #ffffff; border: 1px solid rgba(128,128,128,0.5); border-radius: 6px; padding: 12px; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
         st.markdown(T["guide_md"])
         st.markdown("</div>", unsafe_allow_html=True)
 
