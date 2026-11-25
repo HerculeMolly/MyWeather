@@ -26,8 +26,8 @@ if "lang" not in st.session_state:
     st.session_state.lang = "en"
 if "loc2" not in st.session_state:
     st.session_state.loc2 = None  # Dict: {"name": str, "lat": float, "lon": float}
-if "show_overlay" not in st.session_state:
-    st.session_state.show_overlay = False
+if "active_expander" not in st.session_state:
+    st.session_state.active_expander = None
 
 # Primary Geolocation & Persistent State
 if "lat" in st.query_params and "lon" in st.query_params:
@@ -209,7 +209,8 @@ st.markdown(
         border: 1px solid rgba(128,128,128,0.5);
         border-radius: 6px;
         padding: 12px;
-        margin-top: 4px;
+        margin-top: 3px;
+        margin-bottom: 4px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         width: 100% !important;
         box-sizing: border-box;
@@ -1085,18 +1086,6 @@ with col_b4:
         st.session_state.active_expander = None if open_4 else "overlay"
         st.rerun()
 
-# Sync overlay state with expander selection
-st.session_state.show_overlay = (st.session_state.active_expander == "overlay")
-
-
-# ==========================================
-# GRAPHS DISPLAY SLOT (PRIMARY OR OVERLAY)
-# ==========================================
-if not st.session_state.show_overlay:
-    build_svg_block(["temp", "precip", "wind", "vis"])
-else:
-    build_svg_block(["hum", "press", "uv_pollen"])
-
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
 def resolve_location_string(query_str):
@@ -1130,7 +1119,7 @@ def resolve_location_string(query_str):
 
 
 # ==========================================
-# RENDER ACTIVE EXPANDER CONTENT (FULL WIDTH BELOW BUTTONS)
+# IN-PLACE CONTENT SWAP: GRAPHS OR ACTIVE EXPANDER
 # ==========================================
 if st.session_state.active_expander == "loc":
     with st.container():
@@ -1211,13 +1200,20 @@ elif st.session_state.active_expander == "guide":
         st.markdown(T["guide_md"])
         st.markdown("</div>", unsafe_allow_html=True)
 
+else:
+    # Default view: show primary graphs or overlay graphs depending on whether '➕' is active
+    if st.session_state.active_expander != "overlay":
+        build_svg_block(["temp", "precip", "wind", "vis"])
+    else:
+        build_svg_block(["hum", "press", "uv_pollen"])
+
 
 # 9. Footer Branding (Always Fixed at Screen Bottom)
 st.markdown(
     """
     <div class="footer-container">
         <div>
-            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size:0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
+            <a href="https://buymeacoffee.com/herculemolly" target="_blank" style="text-decoration: none; background-color: #ffdd00; color: #000; padding: 3px 7px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; white-space: nowrap;">☕ Buy me a coffee</a>
         </div>
         <div class="brand-text">
             <a href="https://herculemolly.co.uk" target="_blank" class="brand-name">Hercule Molly</a>
