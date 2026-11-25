@@ -138,7 +138,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Compact iPhone 13 Mini First)
+# 4. Shared WashDry CSS Architecture
 st.markdown(
     """
     <style>
@@ -211,26 +211,26 @@ st.markdown(
     }
 
     /* =======================================================
-       ULTIMATE STABLE SETTINGS FLEX ROW (PURE CSS OVERRIDE)
+       FORCED EQUAL-WIDTH FLEX ROW FOR 3 SELECTBOXES
        ======================================================= */
-    .st-key-settings_row {
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 6px !important;
+        gap: 8px !important;
         width: 100% !important;
         align-items: flex-end !important;
     }
-    .st-key-settings_row > div {
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
+        width: auto !important;
         min-width: 0 !important;
-        width: 100% !important;
     }
-    .st-key-settings_row label {
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] label {
+        font-size: 0.73rem !important;
         white-space: nowrap !important;
-        font-size: 0.75rem !important;
-        font-weight: 600 !important;
-        opacity: 0.85 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
     .footer-container {
@@ -961,20 +961,21 @@ with st.expander(T["drawer_title"]):
 
     st.markdown(f"#### {T['units_head']}")
     
-    # Targetable container for the 3 settings selectors
-    with st.container(key="settings_row"):
-        sc1, sc2, sc3 = st.columns(3)
-        with sc1:
+    # Render selectors inside a targeted container mapped to the CSS flex rule
+    container_settings = st.container(key="settings_row")
+    with container_settings:
+        c1, c2, c3 = st.columns(3)
+        with c1:
             t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
             if t_choice != st.session_state.unit_temp:
                 st.session_state.unit_temp = t_choice
                 st.rerun()
-        with sc2:
+        with c2:
             w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
             if w_choice != st.session_state.unit_wind:
                 st.session_state.unit_wind = w_choice
                 st.rerun()
-        with sc3:
+        with c3:
             lang_keys = ["en", "fr", "de", "es"]
             l_choice = st.selectbox(
                 "Language",
