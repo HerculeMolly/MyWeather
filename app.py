@@ -626,10 +626,12 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
+        # Daytime (sunrise to sunset): subtle light lift so it is always lighter on both light and dark themes
         for dx1, dx2 in day_rects:
-            svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.04)"/>')
+            svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(255, 255, 255, 0.08)"/>')
+        # Nighttime (sunset to sunrise): subtle dark tint so it is always darker on both light and dark themes
         for nx1, nx2 in night_rects:
-            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.16)"/>')
+            svg_parts.append(f'<rect x="{nx1:.1f}" y="{y0}" width="{max(1, nx2 - nx1):.1f}" height="{STRIP_H}" fill="rgba(0, 0, 0, 0.22)"/>')
 
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
@@ -1046,16 +1048,14 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<polyline points="{pol_str}" fill="none" stroke="#27ae60" stroke-width="2.2"/>')
 
             # Dynamic Pollen rating pills with collision avoidance
-            # Sample strategic hours or peaks to show qualitative labels (High, Med, Low, None)
-            poll_pill_indices = [4, 12, 20] # Morning, midday, evening sample points
+            poll_pill_indices = [4, 12, 20]
             last_x = -999
             for p_idx in poll_pill_indices:
                 px, py = pts_pol[p_idx]
                 px = max(PAD_L + 22, min(W - PAD_R - 22, px))
                 
-                # Check collision with previous pill
                 if abs(px - last_x) < 42:
-                    px = min(W - PAD_R - 22, px + 22) # Slight sideways shift
+                    px = min(W - PAD_R - 22, px + 22)
 
                 rating_label = get_pollen_label(pollen_raw[p_idx])
                 svg_parts.append(f'<rect x="{px-20}" y="{py-6.5}" width="40" height="13" fill="#1f1f1f" stroke="#27ae60" stroke-width="0.85" rx="2.5"/>')
