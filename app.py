@@ -24,8 +24,8 @@ if "unit_wind" not in st.session_state:
     st.session_state.unit_wind = "mph"
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
-if "loc2" not in st.session_state:
-    st.session_state.loc2 = None  # Dict: {"name": str, "lat": float, "lon": float}
+if "loc2_enabled" not in st.session_state:
+    st.session_state.loc2_enabled = True
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
 
@@ -64,6 +64,19 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
+# 2nd Location State & Query Parameter Sync
+if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
+    try:
+        st.session_state.loc2 = {
+            "lat": float(st.query_params["loc2_lat"]),
+            "lon": float(st.query_params["loc2_lon"]),
+            "name": st.query_params.get("loc2_name", "2nd Location")
+        }
+    except Exception:
+        st.session_state.loc2 = None
+elif "loc2" not in st.session_state:
+    st.session_state.loc2 = None
+
 # 3. Lightweight Multilingual Dictionary (Concise & Clean)
 TRANSLATIONS = {
     "en": {
@@ -73,6 +86,7 @@ TRANSLATIONS = {
         "set_btn": "Set Location",
         "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
+        "toggle_loc2": "Show 2nd Location Overlays",
         "units_head": "Units & Language Settings",
         "guide_md": """
 * **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance.
@@ -89,6 +103,7 @@ TRANSLATIONS = {
         "set_btn": "Définir",
         "clear_btn": "Effacer 2e Lieu",
         "reset_btn": "Réinitialiser",
+        "toggle_loc2": "Afficher les courbes du 2e lieu",
         "units_head": "Unités & Langue",
         "guide_md": """
 * **Température & Ressenti :** Ligne rouge (réel) & orange (ressenti).
@@ -104,6 +119,7 @@ TRANSLATIONS = {
         "set_btn": "Speichern",
         "clear_btn": "Löschen",
         "reset_btn": "Zurücksetzen",
+        "toggle_loc2": "2. Standort einblenden",
         "units_head": "Einheiten & Sprache",
         "guide_md": """
 * **Temperatur:** Rot = Lufttemperatur, Orange = Gefühlt.
@@ -119,6 +135,7 @@ TRANSLATIONS = {
         "set_btn": "Guardar",
         "clear_btn": "Quitar",
         "reset_btn": "Restablecer",
+        "toggle_loc2": "Mostrar superposición 2ª ubicación",
         "units_head": "Unidades e Idioma",
         "guide_md": """
 * **Temperatura:** Roja = real; naranja = sensación térmica.
@@ -452,7 +469,7 @@ else:
         sunset_hours = [17]
 
 slice_data_2 = None
-if st.session_state.loc2:
+if st.session_state.loc2 and st.session_state.loc2_enabled:
     d2, stale2 = get_weather_with_fallback(st.session_state.loc2["lat"], st.session_state.loc2["lon"])
     if d2 and "hourly" in d2 and not stale2:
         h2 = d2["hourly"]
@@ -473,6 +490,7 @@ if st.session_state.loc2:
             "wind": get_slice2("wind_speed_10m", 10.0),
             "vis": [round(v / 1000.0, 2) for v in get_slice2("visibility", 10000.0)],
             "hum": get_slice2("relative_humidity_2m", 70),
+            "press": [round(p) for p in get_slice2("surface_pressure", 1013)],
             "uv": get_slice2("uv_index", 0.0),
         }
 
@@ -497,7 +515,7 @@ col_head, col_logo = st.columns([5, 1])
 badge_cls = "stale-badge" if is_stale else ""
 loc2_pill = (
     f'<span style="font-size:0.68rem; opacity:0.75; margin-left:6px;">⋯ {st.session_state.loc2["name"]}</span>'
-    if st.session_state.loc2
+    if (st.session_state.loc2 and st.session_state.loc2_enabled)
     else ""
 )
 
@@ -704,7 +722,6 @@ def build_svg_block(charts_to_render):
             pts_p = make_points(probs, 0, 100, top_pad, bot_pad)
             pts_h = make_points(hums_raw, 0, 100, top_pad, bot_pad)
 
-            # Precipitation Probability area fill & curve
             area_str = f"M {pts_p[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_p) + f" L {pts_p[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(52, 152, 219, 0.22)"/>')
 
@@ -716,11 +733,9 @@ def build_svg_block(charts_to_render):
                 p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
                 svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
-            # Humidity solid line in Teal (#16a085)
             h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
             svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#16a085" stroke-width="2.2"/>')
 
-            # Rain probability peak pill
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
             px_prob, py_prob = pts_p[max_prob_idx]
@@ -729,7 +744,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
 
-            # Rainfall mm peak pill
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
@@ -738,7 +752,6 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
                 svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
 
-            # Humidity High / Low pills with intelligent collision avoidance against rain pills
             max_h_val = max(hums_raw)
             min_h_val = min(hums_raw)
             max_h_int = int(round(max_h_val))
@@ -751,7 +764,6 @@ def build_svg_block(charts_to_render):
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
-            # Shift sideways if clashing with rain pill coordinate
             if abs(hhx - px_prob) < 38 and abs(hhy - py_prob) < 18:
                 hhx = min(W - PAD_R - 22, hhx + 42) if hhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, hhx - 42)
             if abs(lhx - px_prob) < 38 and abs(lhy - py_prob) < 18:
@@ -763,7 +775,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}%</text>')
 
-            # Combined Icon & Total rainfall
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
@@ -951,12 +962,18 @@ def build_svg_block(charts_to_render):
         # GRAPH 5 (PRESSURE)
         elif metric == "press":
             press_raw = slice_data["press"]
-            min_p = math.floor(min(press_raw) - 2)
-            max_p = math.ceil(max(press_raw) + 2)
+            all_p = press_raw + (slice_data_2["press"] if slice_data_2 else [])
+            min_p = math.floor(min(all_p) - 2)
+            max_p = math.ceil(max(all_p) + 2)
             pts_p = make_points(press_raw, min_p, max_p, top_pad, bot_pad)
 
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#8e44ad" stroke-width="2.2"/>')
+
+            if slice_data_2:
+                pts_p2 = make_points(slice_data_2["press"], min_p, max_p, top_pad, bot_pad)
+                p2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p2)
+                svg_parts.append(f'<polyline points="{p2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             max_p_val = max(press_raw)
             min_p_val = min(press_raw)
@@ -1013,6 +1030,16 @@ def build_svg_block(charts_to_render):
 
             uv_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_uv)
             svg_parts.append(f'<polyline points="{uv_str}" fill="none" stroke="#f39c12" stroke-width="2"/>')
+
+            if slice_data_2:
+                uv2_masked = []
+                for i in range(25):
+                    h_val = int(slice_data["times"][i].split("T")[1][:2])
+                    is_night = (h_val >= ss_h) or (h_val < sr_h)
+                    uv2_masked.append(0.0 if is_night else slice_data_2["uv"][i])
+                pts_uv2 = make_points(uv2_masked, 0, 12, top_pad, bot_pad)
+                uv2_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_uv2)
+                svg_parts.append(f'<polyline points="{uv2_str}" fill="none" stroke="#3b82f6" stroke-width="1.3" stroke-dasharray="3,3"/>')
 
             uv_peaks = []
             max_uv = max(uv_masked)
@@ -1144,7 +1171,13 @@ if st.session_state.active_expander == "loc":
                 st.session_state.lat = 52.5785
                 st.session_state.lon = -0.1285
                 st.session_state.city = "Peterborough"
+                # Keep query params clean except loc2 if present
+                loc2_cache = st.session_state.loc2
                 st.query_params.clear()
+                if loc2_cache:
+                    st.query_params["loc2_lat"] = str(loc2_cache["lat"])
+                    st.query_params["loc2_lon"] = str(loc2_cache["lon"])
+                    st.query_params["loc2_name"] = loc2_cache["name"]
                 st.session_state.active_expander = None
                 st.rerun()
 
@@ -1155,14 +1188,30 @@ if st.session_state.active_expander == "loc":
                 res2 = resolve_location_string(q2)
                 if res2:
                     st.session_state.loc2 = {"lat": res2[0], "lon": res2[1], "name": res2[2]}
+                    st.session_state.loc2_enabled = True
+                    st.query_params["loc2_lat"] = str(res2[0])
+                    st.query_params["loc2_lon"] = str(res2[1])
+                    st.query_params["loc2_name"] = res2[2]
                     st.session_state.active_expander = None
                     st.rerun()
                 else:
                     st.error("2nd Location not found.")
 
         if st.session_state.loc2:
+            toggle_state = st.checkbox(T["toggle_loc2"], value=st.session_state.loc2_enabled, key="cb_loc2_toggle")
+            if toggle_state != st.session_state.loc2_enabled:
+                st.session_state.loc2_enabled = toggle_state
+                st.rerun()
+
             if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True, key="clear_loc2_btn"):
                 st.session_state.loc2 = None
+                st.session_state.loc2_enabled = True
+                if "loc2_lat" in st.query_params:
+                    del st.query_params["loc2_lat"]
+                if "loc2_lon" in st.query_params:
+                    del st.query_params["loc2_lon"]
+                if "loc2_name" in st.query_params:
+                    del st.query_params["loc2_name"]
                 st.session_state.active_expander = None
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
