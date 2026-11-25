@@ -68,7 +68,7 @@ city_name = st.session_state.city
 TRANSLATIONS = {
     "en": {
         "exp_loc": "📍 Locations",
-        "exp_units": "⚙️ Units & Lang",
+        "exp_units": "⚙️ Units",
         "exp_guide": "📖 Guide",
         "loc1_head": "Primary Location",
         "loc2_head": "2nd Location Overlay (Dotted Line)",
@@ -86,7 +86,7 @@ TRANSLATIONS = {
     },
     "fr": {
         "exp_loc": "📍 Lieux",
-        "exp_units": "⚙️ Unités & Langue",
+        "exp_units": "⚙️ Unités",
         "exp_guide": "📖 Guide",
         "loc1_head": "Lieu Principal",
         "loc2_head": "2e Lieu Superposé",
@@ -142,7 +142,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture
+# 4. Shared WashDry CSS Architecture (Forced 3-Column Equal Row on Mobile)
 st.markdown(
     """
     <style>
@@ -158,6 +158,7 @@ st.markdown(
         margin: 0 auto;
     }
     
+    /* Header layout */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -188,6 +189,30 @@ st.markdown(
         margin-right: 0px !important;
     }
 
+    /* Force 3 Equal Columns for Expanders across all screen widths (Mobile & Desktop) */
+    div[data-testid="stHorizontalBlock"]:has(div.stExpander) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        align-items: flex-start !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div.stExpander) > div[data-testid="stColumn"] {
+        flex: 1 1 0px !important;
+        width: 33.333% !important;
+        min-width: 0 !important;
+        max-width: 33.333% !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div.stExpander) .stExpander summary {
+        padding-left: 4px !important;
+        padding-right: 2px !important;
+        font-size: 0.78rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
     .stExpander {
         margin-top: 2px !important;
         margin-bottom: 2px !important;
@@ -212,26 +237,6 @@ st.markdown(
 
     .charts-desaturated {
         filter: saturate(35%) opacity(0.75);
-    }
-
-    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 8px !important;
-        width: 100% !important;
-        align-items: flex-end !important;
-    }
-    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-        flex: 1 1 0px !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] label {
-        font-size: 0.73rem !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
     }
 
     .footer-container {
@@ -592,7 +597,6 @@ def build_svg_block(charts_to_render):
         top_pad = y0 + 12
         bot_pad = y1 - 10
 
-        # Swapped shading: Sunrise to sunset lighter (0.04), Sunset to sunrise darker (0.16)
         for dx1, dx2 in day_rects:
             svg_parts.append(f'<rect x="{dx1:.1f}" y="{y0}" width="{max(1, dx2 - dx1):.1f}" height="{STRIP_H}" fill="rgba(128, 128, 128, 0.04)"/>')
         for nx1, nx2 in night_rects:
@@ -643,14 +647,12 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lx-19}" y="{ly-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#ef4444" stroke-width="0.75" rx="3"/>')
             svg_parts.append(f'<text x="{lx}" y="{ly+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{min_val}°</text>')
 
-            # Feels-like inline pill calculation with intelligent collision shift
             diffs = [f_v - t_v for f_v, t_v in zip(slice_data["feels"], slice_data["temp"])]
             max_diff = max(diffs, key=abs)
             diff_idx = diffs.index(max_diff)
             dx, dy = pts_f[diff_idx]
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
-            # Shift sideways if clashing with high/low pins
             if (max_idx == diff_idx and abs(dx - hx) < 42) or (min_idx == diff_idx and abs(dx - lx) < 42):
                 dx = min(W - PAD_R - 22, dx + 44) if dx + 44 <= W - PAD_R - 22 else max(PAD_L + 22, dx - 44)
 
@@ -938,7 +940,7 @@ def resolve_location_string(query_str):
     return None
 
 
-# 8. Three Equal-Width Expanders Across All Screen Widths
+# 8. Three Equal-Width Expanders Locked in a Single Horizontal Row
 col_e1, col_e2, col_e3 = st.columns(3)
 
 with col_e1:
