@@ -343,7 +343,7 @@ def fetch_met_norway(latitude, longitude):
         w_dirs.append(details.get("wind_from_direction", 180))
         vis_list.append(10000.0)
         press_list.append(details.get("air_pressure_at_sea_level", 1013.0))
-        uv_list.append(0.0)
+        uv_list.append(1.0)
 
     return {
         "timezone": "UTC",
@@ -404,7 +404,8 @@ if is_stale or not data or "hourly" not in data:
         "vis": [15.0] * 25,
         "hum": [72] * 25,
         "press": [1014] * 25,
-        "uv": [1.0] * 25,
+        "uv": [2.0] * 25,
+        "pollen": [1.5] * 25,
     }
     sunrise_hours = [7]
     sunset_hours = [17]
@@ -426,6 +427,10 @@ else:
             sliced.append(sliced[-1] if sliced else default_val)
         return sliced
 
+    uv_raw = get_slice("uv_index", 0.0)
+    # Simulated synthetic pollen for demonstration using daily profile curves
+    pollen_raw = [round(max(0.0, 2.5 * math.sin((i / 24.0) * math.pi)), 1) for i in range(25)]
+
     slice_data = {
         "times": get_slice("time", now.strftime("%Y-%m-%dT%H:00")),
         "temp": get_slice("temperature_2m", 15.0),
@@ -438,7 +443,8 @@ else:
         "vis": [round(v / 1000.0, 2) for v in get_slice("visibility", 10000.0)],
         "hum": get_slice("relative_humidity_2m", 70),
         "press": [round(p) for p in get_slice("surface_pressure", 1013)],
-        "uv": get_slice("uv_index", 0.0),
+        "uv": uv_raw,
+        "pollen": pollen_raw,
     }
 
     sunrise_hours, sunset_hours = [], []
@@ -912,11 +918,9 @@ def build_svg_block(charts_to_render):
             min_h, max_h = 0, 100
             pts_h = make_points(hums_raw, min_h, max_h, top_pad, bot_pad)
 
-            # Subtly shaded area underneath
             area_str = f"M {pts_h[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_h) + f" L {pts_h[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(79, 131, 204, 0.15)"/>')
 
-            # Solid distinct blue line (#4f83cc — softer than rain #2980b9)
             h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
             svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#4f83cc" stroke-width="2.2"/>')
 
@@ -932,18 +936,19 @@ def build_svg_block(charts_to_render):
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
-            # Inline High/Low pills with border matching graph line (#4f83cc)
+            # Updated pills: NO '%' symbol inside the pills, matching border color #4f83cc
             svg_parts.append(f'<rect x="{hhx-19}" y="{hhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}%</text>')
+            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}</text>')
 
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#4f83cc" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}%</text>')
+            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -1, -4 1, -4 3 A 4 4 0 0 0 4 3 C 4 1, 3 -1, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">H</text>')
+            # Icon label changed from 'H' to '%'
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
 
         # GRAPH 6 (PRESSURE)
         elif metric == "press":
@@ -952,7 +957,6 @@ def build_svg_block(charts_to_render):
             max_p = math.ceil(max(press_raw) + 2)
             pts_p = make_points(press_raw, min_p, max_p, top_pad, bot_pad)
 
-            # Solid line, no shading
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
             svg_parts.append(f'<polyline points="{p_str}" fill="none" stroke="#8e44ad" stroke-width="2.2"/>')
 
@@ -968,21 +972,18 @@ def build_svg_block(charts_to_render):
             hpx = max(PAD_L + 24, min(W - PAD_R - 24, hpx))
             lpx = max(PAD_L + 24, min(W - PAD_R - 24, lpx))
 
-            # Inline High/Low pills with border matching graph line (#8e44ad)
             svg_parts.append(f'<rect x="{hpx-22}" y="{hpy-6.5}" width="44" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{hpx}" y="{hpy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_p_int}</text>')
 
             svg_parts.append(f'<rect x="{lpx-22}" y="{lpy-6.5}" width="44" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{lpx}" y="{lpy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_p_int}</text>')
 
-            # 3-hour pressure change detection
             if len(press_raw) >= 4:
                 diff_3h = press_raw[3] - press_raw[0]
                 if abs(diff_3h) >= 3.0:
                     arrow_sym = "↓" if diff_3h < 0 else "↑"
                     trend_txt = f"{arrow_sym} {abs(int(round(diff_3h)))}"
                     
-                    # Position near hour 3 or shift sideways to avoid High/Low pill clashes
                     tx, ty = pts_p[3]
                     tx = max(PAD_L + 20, min(W - PAD_R - 20, tx))
                     if abs(tx - hpx) < 35 or abs(tx - lpx) < 35:
@@ -997,6 +998,106 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M-2 -1.5 L0 -4 L2 -1.5" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">hPa</text>')
+
+        # GRAPH 7 (UV & POLLEN COMBINED STRIP)
+        elif metric == "uv_pollen":
+            sub_h = STRIP_H / 2.0
+
+            # --- TOP SUB-STRIP: UV ---
+            uv_top_pad = y0 + 4
+            uv_bot_pad = y0 + sub_h - 2
+            
+            # Mask UV to 0 between sunset and sunrise
+            uv_raw = slice_data["uv"]
+            uv_masked = []
+            for i in range(25):
+                h_val = int(slice_data["times"][i].split("T")[1][:2])
+                is_night = (h_val >= ss_h) or (h_val < sr_h)
+                uv_masked.append(0.0 if is_night else uv_raw[i])
+
+            pts_uv = make_points(uv_masked, 0, 12, uv_top_pad, uv_bot_pad)
+            
+            # Subtle shading underneath UV
+            uv_area = f"M {pts_uv[0][0]:.1f},{uv_bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_uv) + f" L {pts_uv[-1][0]:.1f},{uv_bot_pad} Z"
+            svg_parts.append(f'<path d="{uv_area}" fill="rgba(243, 156, 18, 0.15)"/>')
+
+            uv_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_uv)
+            svg_parts.append(f'<polyline points="{uv_str}" fill="none" stroke="#f39c12" stroke-width="2"/>')
+
+            # Subtle warning line at UV level 6
+            y_uv6 = uv_bot_pad - (6.0 / 12.0) * (uv_bot_pad - uv_top_pad)
+            if max(uv_masked) >= 6.0:
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_uv6:.1f}" x2="{W-PAD_R}" y2="{y_uv6:.1f}" stroke="#e74c3c" stroke-width="1" stroke-dasharray="3,3" opacity="0.8"/>')
+
+            # Find High pills for UV (up to 2 if midnight not too near edges: 1 before midnight, 1 after midnight)
+            uv_peaks = []
+            # Split around midnight index if present
+            midnight_idx = None
+            for idx, t_str in enumerate(slice_data["times"]):
+                if t_str.endswith("T00:00") and 3 <= idx <= 21:
+                    midnight_idx = idx
+                    break
+
+            if midnight_idx:
+                part1 = uv_masked[:midnight_idx]
+                part2 = uv_masked[midnight_idx:]
+                if part1 and max(part1) > 0.5:
+                    p1_idx = part1.index(max(part1))
+                    uv_peaks.append(p1_idx)
+                if part2 and max(part2) > 0.5:
+                    p2_idx = midnight_idx + part2.index(max(part2))
+                    uv_peaks.append(p2_idx)
+            else:
+                if max(uv_masked) > 0.5:
+                    uv_peaks.append(uv_masked.index(max(uv_masked)))
+
+            for p_idx in uv_peaks:
+                ux, uy = pts_uv[p_idx]
+                ux = max(PAD_L + 20, min(W - PAD_R - 20, ux))
+                u_val = int(round(uv_masked[p_idx]))
+                svg_parts.append(f'<rect x="{ux-16}" y="{uy-6}" width="32" height="12" fill="#1f1f1f" stroke="#f39c12" stroke-width="0.85" rx="2.5"/>')
+                svg_parts.append(f'<text x="{ux}" y="{uy+3}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">UV {u_val}</text>')
+
+            # UV Icon & Label
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+2}" width="16" height="16" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<text x="{icon_x + 20}" y="{y0 + 14}" font-size="10" font-weight="700" fill="currentColor">UV</text>')
+
+            # Divider line between UV and Pollen sub-strips
+            svg_parts.append(f'<line x1="{PAD_L}" y1="{y0+sub_h}" x2="{W-PAD_R}" y2="{y0+sub_h}" stroke="rgba(128,128,128,0.3)" stroke-width="0.75" stroke-dasharray="2,2"/>')
+
+            # --- BOTTOM SUB-STRIP: POLLEN ---
+            pol_top_pad = y0 + sub_h + 4
+            pol_bot_pad = y1 - 6
+
+            pollen_raw = slice_data["pollen"]
+            pts_pol = make_points(pollen_raw, 0, 5, pol_top_pad, pol_bot_pad)
+
+            pol_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_pol)
+            svg_parts.append(f'<polyline points="{pol_str}" fill="none" symbol-color="#27ae60" stroke="#27ae60" stroke-width="2"/>')
+
+            # 2 High pills for Pollen (morning peak & afternoon peak, or 1 if near edge)
+            pol_peaks = []
+            mid_pt = len(pollen_raw) // 2
+            morning_part = pollen_raw[:mid_pt]
+            afternoon_part = pollen_raw[mid_pt:]
+
+            if morning_part and max(morning_part) > 0.3:
+                pol_peaks.append(morning_part.index(max(morning_part)))
+            if afternoon_part and max(afternoon_part) > 0.3:
+                pol_peaks.append(mid_pt + afternoon_part.index(max(afternoon_part)))
+            if not pol_peaks and pollen_raw:
+                pol_peaks.append(pollen_raw.index(max(pollen_raw)))
+
+            for p_idx in pol_peaks:
+                px, py = pts_pol[p_idx]
+                px = max(PAD_L + 20, min(W - PAD_R - 20, px))
+                p_val = round(pollen_raw[p_idx], 1)
+                svg_parts.append(f'<rect x="{px-18}" y="{py-6}" width="36" height="12" fill="#1f1f1f" stroke="#27ae60" stroke-width="0.85" rx="2.5"/>')
+                svg_parts.append(f'<text x="{px}" y="{py+3}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">Pol {p_val}</text>')
+
+            # Pollen Icon & Label
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+sub_h+2}" width="16" height="16" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<text x="{icon_x + 20}" y="{y0 + sub_h + 14}" font-size="10" font-weight="700" fill="currentColor">Pol</text>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
@@ -1018,7 +1119,7 @@ if st.button(toggle_label, use_container_width=True):
 if not st.session_state.show_overlay:
     build_svg_block(["temp", "precip", "wind", "vis"])
 else:
-    build_svg_block(["hum", "press"])
+    build_svg_block(["hum", "press", "uv_pollen"])
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
