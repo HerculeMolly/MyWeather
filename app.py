@@ -667,13 +667,14 @@ def build_svg_block(charts_to_render):
             dx, dy = pts_f[diff_idx]
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
+            # Smart sideways collision avoidance against High/Low temperature pins
             if (max_idx == diff_idx and abs(dx - hx) < 42) or (min_idx == diff_idx and abs(dx - lx) < 42):
                 dx = min(W - PAD_R - 22, dx + 44) if dx + 44 <= W - PAD_R - 22 else max(PAD_L + 22, dx - 44)
 
             arrow_char = "↑" if max_diff >= 0 else "↓"
             delta_label = f"{arrow_char} {abs(int(round(max_diff)))}°"
 
-            # Feels-like pill: Background = Gust pill (#d1d5db), Border = Feels-Like line (#d97706), Text = Temp line (#ef4444)
+            # Feels-like pill: Centered inline with graph curve (dy="3.5"), Gust pill background (#d1d5db), Feels-Like border (#d97706), Temp text (#ef4444)
             svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{dx}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{delta_label}</text>')
 
