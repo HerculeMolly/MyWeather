@@ -343,9 +343,9 @@ st.markdown(
         margin-bottom: 2px !important;
     }
     .dropdown-box button {
-        min-height: 24px !important;
-        height: 24px !important;
-        padding: 0px 4px !important;
+        min-height: 26px !important;
+        height: 26px !important;
+        padding: 0px 2px !important;
         font-size: 0.75rem !important;
         line-height: 1 !important;
     }
@@ -686,8 +686,8 @@ def get_encoded_logo(filename, label):
     except Exception:
         return f'<div style="border: 1.5px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.48rem; opacity: 0.6; flex-shrink:0;" title="{label}">{label}</div>'
 
-logo_winter_html = get_encoded_logo("logo_winter.png", "Winter")
 logo_summer_html = get_encoded_logo("logo_summer.png", "Summer")
+logo_winter_html = get_encoded_logo("logo_winter.png", "Winter")
 
 st.markdown(
     f"""
@@ -813,7 +813,7 @@ def build_svg_block(charts_to_render):
     for row_idx, metric in enumerate(charts_to_render):
         y0 = HEADER_H + row_idx * STRIP_H
         y1 = y0 + STRIP_H
-        top_pad = y0 + 12
+        top_pad = y0 + 14
         bot_pad = y1 - 10
 
         for dx1, dx2 in day_rects:
@@ -833,11 +833,10 @@ def build_svg_block(charts_to_render):
             min_t = math.floor(min(all_t) - 2)
             max_t = math.ceil(max(all_t) + 2)
 
-            # Check if freezing point (<= 0°C) occurs in forecast
-            has_freezing = any(c <= 0.0 for c in temp_raw_celsius)
-            if has_freezing:
-                freeze_val_c = 0.0
-                freeze_val = freeze_val_c if st.session_state.unit_temp == "C" else (freeze_val_c * 9/5 + 32)
+            # Check if freezing point (<= 0°C) occurs and comes above the bottom of the graph
+            freeze_val_c = 0.0
+            freeze_val = freeze_val_c if st.session_state.unit_temp == "C" else (freeze_val_c * 9/5 + 32)
+            if min_t < freeze_val:
                 y_freeze = bot_pad - max(0.0, min(1.0, (freeze_val - min_t) / max(max_t - min_t, 0.1))) * (bot_pad - top_pad)
                 y_freeze = max(top_pad, min(bot_pad, y_freeze))
                 
@@ -903,11 +902,11 @@ def build_svg_block(charts_to_render):
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
             is_up = (max_diff >= 0)
-            poly_points = "0,-3.5 3,2 -3,2" if is_up else "0,3.5 3,-2 -3,-2"
+            poly_points = "0,-4.5 3.5,1 -3.5,1" if is_up else "0,4.5 3.5,-1 -3.5,-1"
             arrow_svg = f'<polygon points="{poly_points}" fill="#ef4444"/>'
             abs_diff_str = f"{abs(int(round(max_diff)))}°"
 
-            svg_parts.append(f'<rect x="{dx-19}" y="{dy-6.5}" width="38" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
+            svg_parts.append(f'<rect x="{dx-20}" y="{dy-6.5}" width="40" height="13" fill="#d1d5db" stroke="#d97706" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<g transform="translate({dx-11}, {dy})">{arrow_svg}</g>')
             svg_parts.append(f'<text x="{dx+4}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{abs_diff_str}</text>')
 
@@ -978,6 +977,10 @@ def build_svg_block(charts_to_render):
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
+            # Shift High humidity pill left if near right edge (to prevent 100% pill clashing with icon)
+            if hhx > W - PAD_R - 45:
+                hhx = W - PAD_R - 45
+
             if abs(hhx - px_prob) < 38 and abs(hhy - py_prob) < 18:
                 hhx = min(W - PAD_R - 22, hhx + 42) if hhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, hhx - 42)
             if abs(lhx - px_prob) < 38 and abs(lhy - py_prob) < 18:
@@ -1002,8 +1005,12 @@ def build_svg_block(charts_to_render):
 
             total_24h = sum(mms[:24])
             if total_24h >= 0.05:
-                svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.85" rx="2"/>')
-                svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
+                # Dynamic Xmm/24 pill sliding left if overlapping icon area
+                tot_pill_x = W - PAD_R - 22
+                if abs(tot_pill_x - icon_x) < 48:
+                    tot_pill_x = icon_x - 24
+                svg_parts.append(f'<rect x="{tot_pill_x - 21}" y="{y0+3}" width="42" height="13" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.85" rx="2"/>')
+                svg_parts.append(f'<text x="{tot_pill_x}" y="{y0+12}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
         elif metric == "wind":
             winds_raw = slice_data["wind"]
@@ -1496,30 +1503,30 @@ elif st.session_state.active_expander == "units":
 
         st.markdown("<hr style='margin: 8px 0 6px 0; border-color: rgba(255,255,255,0.18);'/>", unsafe_allow_html=True)
 
-        # Compact 6-graph sort list (Top 4 show on main screen, bottom 2 in overlay)
+        # Compact 6-graph sort list with inline side-by-side arrow buttons to fit iPhone perfectly
         order = st.session_state.graph_order
         for idx, g_key in enumerate(order):
             g_label = T["graphs"].get(g_key, g_key)
             screen_tag = "Main" if idx < 4 else "More"
             badge_bg = "rgba(39, 174, 96, 0.35)" if idx < 4 else "rgba(128, 128, 128, 0.25)"
             
-            r_col1, r_col2, r_col3 = st.columns([6.5, 1.75, 1.75])
+            r_col1, r_col2, r_col3 = st.columns([5.5, 2.25, 2.25])
             with r_col1:
                 st.markdown(
-                    f"<div style='font-size:0.8rem; line-height:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
+                    f"<div style='font-size:0.76rem; line-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
                     f"<span style='opacity:0.65; font-weight:700;'>{idx+1}.</span> <b>{g_label}</b> "
-                    f"<span style='font-size:0.65rem; background:{badge_bg}; padding:1px 4px; border-radius:3px; margin-left:3px;'>{screen_tag}</span>"
+                    f"<span style='font-size:0.62rem; background:{badge_bg}; padding:1px 3px; border-radius:3px;'>{screen_tag}</span>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
             with r_col2:
-                if st.button("▲", key=f"up_{g_key}", disabled=(idx == 0), use_container_width=True):
+                if st.button("▲ Up", key=f"up_{g_key}", disabled=(idx == 0), use_container_width=True):
                     order[idx], order[idx - 1] = order[idx - 1], order[idx]
                     st.session_state.graph_order = order
                     st.query_params["g_order"] = ",".join(order)
                     st.rerun()
             with r_col3:
-                if st.button("▼", key=f"dn_{g_key}", disabled=(idx == len(order) - 1), use_container_width=True):
+                if st.button("▼ Dn", key=f"dn_{g_key}", disabled=(idx == len(order) - 1), use_container_width=True):
                     order[idx], order[idx + 1] = order[idx + 1], order[idx]
                     st.session_state.graph_order = order
                     st.query_params["g_order"] = ",".join(order)
