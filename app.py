@@ -18,6 +18,8 @@ if "refresh" in st.query_params:
     st.rerun()
 
 # 2. Persistent State Defaults & Startup Loaders
+DEFAULT_GRAPH_ORDER = ["temp", "precip_hum", "wind", "vis", "press", "uv_pollen"]
+
 if "unit_temp" not in st.session_state:
     st.session_state.unit_temp = "C"
 if "unit_wind" not in st.session_state:
@@ -26,6 +28,17 @@ if "lang" not in st.session_state:
     st.session_state.lang = "en"
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
+
+# Load Graph Order from Query Params if present
+if "g_order" in st.query_params:
+    raw_order = st.query_params["g_order"].split(",")
+    valid_order = [g for g in raw_order if g in DEFAULT_GRAPH_ORDER]
+    for g in DEFAULT_GRAPH_ORDER:
+        if g not in valid_order:
+            valid_order.append(g)
+    st.session_state.graph_order = valid_order
+elif "graph_order" not in st.session_state:
+    st.session_state.graph_order = list(DEFAULT_GRAPH_ORDER)
 
 # Load 2nd Location & Toggle State from Query Params immediately at startup if present
 if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
@@ -78,13 +91,15 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
-# LocalStorage Sync Bridge (Persists locations across iOS Home Screen app close/reopen)
+# LocalStorage Sync Bridge (Persists locations & graph order across iOS Home Screen app close/reopen)
 loc2_js_lat = str(st.session_state.loc2["lat"]) if st.session_state.loc2 else ""
 loc2_js_lon = str(st.session_state.loc2["lon"]) if st.session_state.loc2 else ""
 loc2_js_name = st.session_state.loc2["name"].replace('"', '\\"') if st.session_state.loc2 else ""
 loc2_js_en = "1" if st.session_state.loc2_enabled else "0"
 has_loc2_url = "true" if ("loc2_lat" in st.query_params) else "false"
 has_loc1_url = "true" if ("lat" in st.query_params) else "false"
+g_order_str = ",".join(st.session_state.graph_order)
+has_gorder_url = "true" if ("g_order" in st.query_params) else "false"
 
 components.html(
     f"""
@@ -118,6 +133,13 @@ components.html(
             changed = true;
         }}
 
+        if ({has_gorder_url}) {{
+            localStorage.setItem('mw_g_order', "{g_order_str}");
+        }} else if (localStorage.getItem('mw_g_order')) {{
+            url.searchParams.set('g_order', localStorage.getItem('mw_g_order'));
+            changed = true;
+        }}
+
         if (changed) {{
             p.location.replace(url.toString());
         }}
@@ -138,7 +160,15 @@ TRANSLATIONS = {
         "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
         "toggle_loc2": "Show 2nd Location Overlays",
-        "units_head": "Units & Language Settings",
+        "units_head": "Units, Language & Graph Order (Top 4 on Main Screen)",
+        "graphs": {
+            "temp": "Temp & Feels-Like",
+            "precip_hum": "Precip & Humidity",
+            "wind": "Wind & Gusts",
+            "vis": "Visibility",
+            "press": "Pressure (hPa)",
+            "uv_pollen": "UV & Pollen",
+        },
         "guide_md": """
 * **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance. Shaded blue band highlights freezing ($0^\\circ\\text{C}$) conditions.
 * **Precip / Humidity:** Blue curve shows rain probability & peak mm/24h; teal line tracks humidity.
@@ -155,7 +185,15 @@ TRANSLATIONS = {
         "clear_btn": "Effacer 2e Lieu",
         "reset_btn": "Réinitialiser",
         "toggle_loc2": "Afficher les courbes du 2e lieu",
-        "units_head": "Unités & Langue",
+        "units_head": "Unités, Langue & Ordre des Graphiques",
+        "graphs": {
+            "temp": "Temp & Ressenti",
+            "precip_hum": "Pluie & Humidité",
+            "wind": "Vent & Rafales",
+            "vis": "Visibilité",
+            "press": "Pression (hPa)",
+            "uv_pollen": "UV & Pollen",
+        },
         "guide_md": """
 * **Température & Ressenti :** Ligne rouge (réel) & orange (ressenti).
 * **Précipitations & Humidité :** Risque de pluie, cumul mm & taux d'humidité.
@@ -171,7 +209,15 @@ TRANSLATIONS = {
         "clear_btn": "Löschen",
         "reset_btn": "Zurücksetzen",
         "toggle_loc2": "2. Standort einblenden",
-        "units_head": "Einheiten & Sprache",
+        "units_head": "Einheiten, Sprache & Diagrammfolge",
+        "graphs": {
+            "temp": "Temp & Gefühlt",
+            "precip_hum": "Niederschlag & Feuchte",
+            "wind": "Wind & Böen",
+            "vis": "Sichtweite",
+            "press": "Luftdruck (hPa)",
+            "uv_pollen": "UV & Pollen",
+        },
         "guide_md": """
 * **Temperatur:** Rot = Lufttemperatur, Orange = Gefühlt.
 * **Niederschlag & Feuchte:** Regenwahrscheinlichkeit & Luftfeuchtigkeit.
@@ -187,7 +233,15 @@ TRANSLATIONS = {
         "clear_btn": "Quitar",
         "reset_btn": "Restablecer",
         "toggle_loc2": "Mostrar superposición 2ª ubicación",
-        "units_head": "Unidades e Idioma",
+        "units_head": "Unidades, Idioma y Orden de Gráficos",
+        "graphs": {
+            "temp": "Temp y Sensación",
+            "precip_hum": "Lluvia y Humedad",
+            "wind": "Viento y Ráfagas",
+            "vis": "Visibilidad",
+            "press": "Presión (hPa)",
+            "uv_pollen": "UV y Polen",
+        },
         "guide_md": """
 * **Temperatura:** Roja = real; naranja = sensación térmica.
 * **Precipitación y Humedad:** Probabilidad de lluvia y humedad relativa.
@@ -215,8 +269,8 @@ st.markdown(
         margin: 0 auto;
     }
     
-    /* Force 4 Equal Columns for Action Buttons with 20% height reduction & 50% gap reduction */
-    div[data-testid="stHorizontalBlock"]:has(button) {
+    /* Force 4 Equal Columns for top Action Buttons only */
+    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -225,13 +279,13 @@ st.markdown(
         align-items: center !important;
         margin-bottom: -12px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button) > div[data-testid="stColumn"] {
+    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
         width: 25% !important;
         min-width: 0 !important;
         max-width: 25% !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button) button {
+    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) button {
         width: 100% !important;
         white-space: nowrap !important;
         overflow: hidden !important;
@@ -247,7 +301,7 @@ st.markdown(
         color: #ffffff !important;
         border: 1px solid rgba(128,128,128,0.5);
         border-radius: 6px;
-        padding: 12px;
+        padding: 8px 10px;
         margin-top: 3px;
         margin-bottom: 4px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
@@ -261,6 +315,39 @@ st.markdown(
         background-color: #2d2d2d !important;
         color: #ffffff !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+
+    /* Compact controls inside dropdown-box */
+    .dropdown-box div[data-testid="stSelectbox"] {
+        margin-bottom: -8px !important;
+    }
+    .dropdown-box div[data-testid="stSelectbox"] label {
+        font-size: 0.72rem !important;
+        min-height: 0 !important;
+        margin-bottom: 1px !important;
+    }
+    .dropdown-box div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        min-height: 28px !important;
+        height: 28px !important;
+        font-size: 0.8rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        background-color: #2d2d2d !important;
+    }
+    .dropdown-box div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin-bottom: 2px !important;
+    }
+    .dropdown-box button {
+        min-height: 24px !important;
+        height: 24px !important;
+        padding: 0px 4px !important;
+        font-size: 0.75rem !important;
+        line-height: 1 !important;
     }
 
     .stale-badge {
@@ -589,7 +676,6 @@ loc2_pill = (
     else ""
 )
 
-# Load dual logos (summer & winter side by side)
 import base64
 
 def get_encoded_logo(filename, label):
@@ -1325,7 +1411,9 @@ if st.session_state.active_expander == "loc":
                 st.session_state.city = "Peterborough"
                 loc2_cache = st.session_state.loc2
                 loc2_en_cache = st.session_state.loc2_enabled
+                g_order_cache = ",".join(st.session_state.graph_order)
                 st.query_params.clear()
+                st.query_params["g_order"] = g_order_cache
                 if loc2_cache:
                     st.query_params["loc2_lat"] = str(loc2_cache["lat"])
                     st.query_params["loc2_lon"] = str(loc2_cache["lon"])
@@ -1379,28 +1467,64 @@ if st.session_state.active_expander == "loc":
 elif st.session_state.active_expander == "units":
     with st.container():
         st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
-        st.markdown(f"**{T['units_head']}**")
-        t_choice = st.selectbox("°C / °F", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
-        if t_choice != st.session_state.unit_temp:
-            st.session_state.unit_temp = t_choice
-            st.rerun()
+        st.markdown(f"<div style='font-size:0.82rem; font-weight:700; margin-bottom:4px;'>{T['units_head']}</div>", unsafe_allow_html=True)
+        
+        # Ultra-compact single-row units & language selectors
+        u_col1, u_col2, u_col3 = st.columns(3)
+        with u_col1:
+            t_choice = st.selectbox("Temp", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
+            if t_choice != st.session_state.unit_temp:
+                st.session_state.unit_temp = t_choice
+                st.rerun()
+        with u_col2:
+            w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
+            if w_choice != st.session_state.unit_wind:
+                st.session_state.unit_wind = w_choice
+                st.rerun()
+        with u_col3:
+            lang_keys = ["en", "fr", "de", "es"]
+            l_choice = st.selectbox(
+                "Lang",
+                lang_keys,
+                index=lang_keys.index(st.session_state.lang),
+                format_func=lambda x: x.upper(),
+                key="sel_lang"
+            )
+            if l_choice != st.session_state.lang:
+                st.session_state.lang = l_choice
+                st.rerun()
+
+        st.markdown("<hr style='margin: 8px 0 6px 0; border-color: rgba(255,255,255,0.18);'/>", unsafe_allow_html=True)
+
+        # Compact 6-graph sort list (Top 4 show on main screen, bottom 2 in overlay)
+        order = st.session_state.graph_order
+        for idx, g_key in enumerate(order):
+            g_label = T["graphs"].get(g_key, g_key)
+            screen_tag = "Main" if idx < 4 else "More"
+            badge_bg = "rgba(39, 174, 96, 0.35)" if idx < 4 else "rgba(128, 128, 128, 0.25)"
             
-        w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
-        if w_choice != st.session_state.unit_wind:
-            st.session_state.unit_wind = w_choice
-            st.rerun()
-            
-        lang_keys = ["en", "fr", "de", "es"]
-        l_choice = st.selectbox(
-            "Language",
-            lang_keys,
-            index=lang_keys.index(st.session_state.lang),
-            format_func=lambda x: x.upper(),
-            key="sel_lang"
-        )
-        if l_choice != st.session_state.lang:
-            st.session_state.lang = l_choice
-            st.rerun()
+            r_col1, r_col2, r_col3 = st.columns([6.5, 1.75, 1.75])
+            with r_col1:
+                st.markdown(
+                    f"<div style='font-size:0.8rem; line-height:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
+                    f"<span style='opacity:0.65; font-weight:700;'>{idx+1}.</span> <b>{g_label}</b> "
+                    f"<span style='font-size:0.65rem; background:{badge_bg}; padding:1px 4px; border-radius:3px; margin-left:3px;'>{screen_tag}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            with r_col2:
+                if st.button("▲", key=f"up_{g_key}", disabled=(idx == 0), use_container_width=True):
+                    order[idx], order[idx - 1] = order[idx - 1], order[idx]
+                    st.session_state.graph_order = order
+                    st.query_params["g_order"] = ",".join(order)
+                    st.rerun()
+            with r_col3:
+                if st.button("▼", key=f"dn_{g_key}", disabled=(idx == len(order) - 1), use_container_width=True):
+                    order[idx], order[idx + 1] = order[idx + 1], order[idx]
+                    st.session_state.graph_order = order
+                    st.query_params["g_order"] = ",".join(order)
+                    st.rerun()
+
         st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.active_expander == "guide":
@@ -1411,9 +1535,9 @@ elif st.session_state.active_expander == "guide":
 
 else:
     if st.session_state.active_expander != "overlay":
-        build_svg_block(["temp", "precip_hum", "wind", "vis"])
+        build_svg_block(st.session_state.graph_order[:4])
     else:
-        build_svg_block(["press", "uv_pollen"])
+        build_svg_block(st.session_state.graph_order[4:])
 
 
 # 9. Footer Branding (Always Fixed at Screen Bottom)
