@@ -199,7 +199,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Updated Button Height & Gap)
+# 4. Shared WashDry CSS Architecture
 st.markdown(
     """
     <style>
@@ -215,7 +215,7 @@ st.markdown(
         margin: 0 auto;
     }
     
-    /* Header layout */
+    /* Header layout optimization */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -224,29 +224,8 @@ st.markdown(
         justify-content: space-between !important;
         width: 100% !important;
     }
-    [data-testid="stColumn"]:nth-of-type(1) {
-        flex: 1 1 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    [data-testid="stColumn"]:nth-of-type(2) {
-        flex: 0 0 50px !important;
-        width: 50px !important;
-        min-width: 50px !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-        align-items: center !important;
-        padding-right: 0px !important;
-    }
-    [data-testid="stColumn"] img {
-        max-width: 44px !important;
-        width: 44px !important;
-        height: auto !important;
-        margin-left: auto !important;
-        margin-right: 0px !important;
-    }
-
-    /* Force 4 Equal Columns for Action Buttons in a Single No-Wrap Row + Reduced Button Height & Gap */
+    
+    /* Force 4 Equal Columns for Action Buttons with 20% height reduction & 50% gap reduction */
     div[data-testid="stHorizontalBlock"]:has(button) {
         display: flex !important;
         flex-direction: row !important;
@@ -254,7 +233,7 @@ st.markdown(
         gap: 6px !important;
         width: 100% !important;
         align-items: center !important;
-        margin-bottom: -12px !important; /* Reduces vertical gap between buttons & charts by 50% */
+        margin-bottom: -12px !important;
     }
     div[data-testid="stHorizontalBlock"]:has(button) > div[data-testid="stColumn"] {
         flex: 1 1 0px !important;
@@ -267,8 +246,8 @@ st.markdown(
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        font-size: 0.9rem !important;
-        padding: 1px 2px !important; /* Reduces vertical button height by 20% */
+        font-size: 1.05rem !important;
+        padding: 1px 2px !important;
         min-height: 32px !important;
     }
 
@@ -609,8 +588,8 @@ if st.session_state.unit_wind == "mph":
     if slice_data_2:
         slice_data_2["vis"] = [round(v * 0.621371, 2) for v in slice_data_2["vis"]]
 
-# 6. Header Row (Timestamp without 'updated')
-col_head, col_logo = st.columns([5, 1])
+# 6. Header Row (Fixed column ratio to prevent MyWeather title wrapping)
+col_head, col_logo = st.columns([4, 1])
 
 badge_cls = "stale-badge" if is_stale else ""
 loc2_pill = (
@@ -622,13 +601,13 @@ loc2_pill = (
 with col_head:
     st.markdown(
         f"""
-        <div style="display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap;">
+        <div style="display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; white-space: nowrap;">
             <h1 style="margin: 0; font-size: 1.3rem; font-weight: 800; line-height: 1.1;">MyWeather</h1>
             <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">{timestamp_str}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-            <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85;">📍 {city_name}{loc2_pill}</div>
-            <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85;">🔄</a>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; white-space: nowrap;">
+            <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85; overflow: hidden; text-overflow: ellipsis;">📍 {city_name}{loc2_pill}</div>
+            <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85; margin-left: 8px;">🔄</a>
         </div>
         """,
         unsafe_allow_html=True,
@@ -743,10 +722,8 @@ def build_svg_block(charts_to_render):
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
-        # Midnight vertical line rendered first per chart strip
         svg_parts.append(f'<line x1="{midnight_x:.1f}" y1="{y0}" x2="{midnight_x:.1f}" y2="{y1}" stroke="currentColor" stroke-width="1" opacity="0.25"/>')
 
-        # GRAPH 1 (TEMP — RED & ORANGE)
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
             if slice_data_2:
@@ -816,7 +793,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
-        # GRAPH 2 (COMBINED PRECIPITATION PROBABILITY & HUMIDITY)
         elif metric == "precip_hum":
             probs = slice_data["precipitation_probability"] if "precipitation_probability" in slice_data else slice_data["precip_prob"]
             mms = slice_data["precipitation"] if "precipitation" in slice_data else slice_data["precip_mm"]
@@ -888,7 +864,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
             svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
-        # GRAPH 3 (WIND)
         elif metric == "wind":
             winds_raw = slice_data["wind"]
             gusts_raw = slice_data["gust"]
@@ -976,7 +951,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{st.session_state.unit_wind}</text>')
 
-        # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
             vis_raw = slice_data["vis"]
             all_v = vis_raw + (slice_data_2["vis"] if slice_data_2 else [])
@@ -1062,7 +1036,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{unit_label}</text>')
 
-        # GRAPH 5 (PRESSURE)
         elif metric == "press":
             press_raw = slice_data["press"]
             all_p = press_raw + (slice_data_2["press"] if slice_data_2 else [])
@@ -1117,7 +1090,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">hPa</text>')
 
-        # GRAPH 6 (COMBINED UV & POLLEN OVERLAY STRIP)
         elif metric == "uv_pollen":
             uv_raw = slice_data["uv"]
             uv_masked = []
@@ -1185,7 +1157,7 @@ def build_svg_block(charts_to_render):
 
 
 # ==========================================
-# 4-BUTTON ICON ROW (CUSTOM CLEAR GEAR, BOOK+? GUIDE, DOWN ARROW OVERLAY)
+# 4-BUTTON ICON ROW (USING CLEAN SUPPORTED EMOJIS)
 # ==========================================
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
@@ -1200,24 +1172,19 @@ with col_b1:
 
 with col_b2:
     open_2 = (st.session_state.active_expander == "units")
-    gear_svg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
-    if st.button(gear_svg, use_container_width=True, key="btn_units"):
+    if st.button("⚙️", use_container_width=True, key="btn_units"):
         st.session_state.active_expander = None if open_2 else "units"
         st.rerun()
 
 with col_b3:
     open_3 = (st.session_state.active_expander == "guide")
-    # Custom Open Book with Question Mark Icon based on attached reference image
-    book_q_svg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H12v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M20 19.5v-15A2.5 2.5 0 0 0 17.5 2H12v20h5.5a2.5 2.5 0 0 0 2.5-2.5z"/><path d="M9.5 7.5c0-1.5 1-2.5 2.5-2.5s2.5 1 2.5 2.5c0 1.25-1 2-1.75 2.75S12 11.5 12 13"/><circle cx="12" cy="16.5" r="0.75" fill="currentColor"/></svg>'
-    if st.button(book_q_svg, use_container_width=True, key="btn_guide"):
+    if st.button("📖❓", use_container_width=True, key="btn_guide"):
         st.session_state.active_expander = None if open_3 else "guide"
         st.rerun()
 
 with col_b4:
     open_4 = (st.session_state.active_expander == "overlay")
-    # Down arrow / more icon
-    down_arrow_svg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polyline points="6 9 12 15 18 9"/></svg>'
-    if st.button(down_arrow_svg, use_container_width=True, key="btn_overlay"):
+    if st.button("▾", use_container_width=True, key="btn_overlay"):
         st.session_state.active_expander = None if open_4 else "overlay"
         st.rerun()
 
@@ -1366,7 +1333,6 @@ elif st.session_state.active_expander == "guide":
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # Default view: show primary graphs (Temp, Precip/Humidity combined, Wind, Visibility) or overlay graphs (Pressure, UV/Pollen)
     if st.session_state.active_expander != "overlay":
         build_svg_block(["temp", "precip_hum", "wind", "vis"])
     else:
