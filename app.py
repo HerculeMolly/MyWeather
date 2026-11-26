@@ -479,7 +479,6 @@ else:
             
             pollen_combined = []
             for i in range(aq_start, aq_end):
-                # Sum common pollens and scale to a 0-5 index
                 total = (alder[i] or 0) + (birch[i] or 0) + (grass[i] or 0) + (mugwort[i] or 0) + (olive[i] or 0) + (ragweed[i] or 0)
                 pollen_combined.append(round(min(5.0, total / 20.0), 1))
             
@@ -813,7 +812,7 @@ def build_svg_block(charts_to_render):
             min_h_idx = hums_raw.index(min_h_val)
 
             hhx, hhy = pts_h[max_h_idx]
-            lhx, lwy = pts_h[min_h_idx]
+            lhx, lhy = pts_h[min_h_idx]
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
@@ -1162,7 +1161,6 @@ with col_b3:
 
 with col_b4:
     open_4 = (st.session_state.active_expander == "overlay")
-    # Lighter plus symbol color for dark mode button visibility
     plus_svg = '<svg viewBox="0 0 16 16" width="16" height="16" style="vertical-align: middle;"><path d="M8 3v10M3 8h10" stroke="#d1d5db" stroke-width="2.2" stroke-linecap="round"/></svg>'
     if st.button(plus_svg, use_container_width=True, key="btn_overlay"):
         st.session_state.active_expander = None if open_4 else "overlay"
