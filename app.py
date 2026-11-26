@@ -133,7 +133,7 @@ TRANSLATIONS = {
     "en": {
         "loc1_head": "Primary Location",
         "loc2_head": "2nd Location Overlay (Dotted Line)",
-        "loc_placeholder": "UK Postcode, City, or Lat,Lon",
+        "loc_placeholder": "Global City, UK Postcode, or Lat,Lon",
         "set_btn": "Set Location",
         "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
@@ -150,7 +150,7 @@ TRANSLATIONS = {
     "fr": {
         "loc1_head": "Lieu Principal",
         "loc2_head": "2e Lieu Superposé",
-        "loc_placeholder": "Ville ou Lat,Lon",
+        "loc_placeholder": "Ville, Code Postal ou Lat,Lon",
         "set_btn": "Définir",
         "clear_btn": "Effacer 2e Lieu",
         "reset_btn": "Réinitialiser",
@@ -166,7 +166,7 @@ TRANSLATIONS = {
     "de": {
         "loc1_head": "Hauptstandort",
         "loc2_head": "2. Standort-Overlay",
-        "loc_placeholder": "Stadt oder Lat,Lon",
+        "loc_placeholder": "Weltstadt, PLZ oder Lat,Lon",
         "set_btn": "Speichern",
         "clear_btn": "Löschen",
         "reset_btn": "Zurücksetzen",
@@ -182,7 +182,7 @@ TRANSLATIONS = {
     "es": {
         "loc1_head": "Ubicación Principal",
         "loc2_head": "2ª Ubicación",
-        "loc_placeholder": "Ciudad o Lat,Lon",
+        "loc_placeholder": "Ciudad Global, Código Postal o Lat,Lon",
         "set_btn": "Guardar",
         "clear_btn": "Quitar",
         "reset_btn": "Restablecer",
@@ -676,6 +676,19 @@ def build_svg_block(charts_to_render):
     ]
 
     svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
+
+    # Daylight header highlight bars behind times (yellow morphing to amber in last 1/8th at each end)
+    for idx, (dx1, dx2) in enumerate(day_rects):
+        grad_id = f"dayHeadGrad_{idx}"
+        span_w = max(1.0, dx2 - dx1)
+        svg_parts.append(f'<defs><linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="{dx1}" y1="0" x2="{dx2}" y2="0">')
+        svg_parts.append(f'<stop offset="0%" stop-color="#d35400" stop-opacity="0.6"/>')
+        svg_parts.append(f'<stop offset="12.5%" stop-color="#f1c40f" stop-opacity="0.5"/>')
+        svg_parts.append(f'<stop offset="87.5%" stop-color="#f1c40f" stop-opacity="0.5"/>')
+        svg_parts.append(f'<stop offset="100%" stop-color="#d35400" stop-opacity="0.6"/>')
+        svg_parts.append(f'</linearGradient></defs>')
+        svg_parts.append(f'<rect x="{dx1:.1f}" y="2" width="{span_w:.1f}" height="14" rx="2" fill="url(#{grad_id})"/>')
+
     svg_parts.append(f'<line x1="0" y1="{HEADER_H}" x2="{W}" y2="{HEADER_H}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
     for i in range(0, 25, 4):
         lbl = slice_data["times"][i].split("T")[1].replace(":", "")
@@ -774,7 +787,6 @@ def build_svg_block(charts_to_render):
             dx, dy = pts_f[best_idx]
             dx = max(PAD_L + 22, min(W - PAD_R - 22, dx))
 
-            # SVG Triangle Pointer (▲ / ▼) for unmistakable direction on small screens
             is_up = (max_diff >= 0)
             poly_points = "0,-3.5 3,2 -3,2" if is_up else "0,3.5 3,-2 -3,-2"
             arrow_svg = f'<polygon points="{poly_points}" fill="#ef4444"/>'
@@ -882,7 +894,6 @@ def build_svg_block(charts_to_render):
             pts_w = make_points(winds_raw, 0, max_w, top_pad, bot_pad)
             pts_g = make_points(gusts_raw, 0, max_w, top_pad, bot_pad)
 
-            # Under-fill opacity slightly lightened to 0.22 for enhanced black background contrast
             area_str = f"M {pts_w[0][0]:.1f},{bot_pad} " + " ".join(f"L {x:.1f},{y:.1f}" for x, y in pts_w) + f" L {pts_w[-1][0]:.1f},{bot_pad} Z"
             svg_parts.append(f'<path d="{area_str}" fill="rgba(100, 116, 139, 0.22)"/>')
 
@@ -1006,8 +1017,6 @@ def build_svg_block(charts_to_render):
             min_vis_val = min(vis_raw)
             max_vis_int = int(round(max_vis_val))
             min_vis_int = int(round(min_vis_val))
-            
-            # Capped Visibility High Pill label at 20+ to prevent interference
             max_vis_label = f"{max_vis_int}+" if max_vis_int >= 20 else str(max_vis_int)
 
             max_vis_idx = vis_raw.index(max_vis_val)
@@ -1052,8 +1061,8 @@ def build_svg_block(charts_to_render):
             press_raw = slice_data["press"]
             all_p = press_raw + (slice_data_2["press"] if slice_data_2 else [])
             min_p = math.floor(min(all_p) - 2)
-            # Increased max ceiling padding to +4 for generous headroom under top headers/icons
-            max_p = math.ceil(max(all_p) + 4)
+            # Increased max ceiling padding to +10 for ample headroom under top headers/icons
+            max_p = math.ceil(max(all_p) + 10)
             pts_p = make_points(press_raw, min_p, max_p, top_pad, bot_pad)
 
             p_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_p)
