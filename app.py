@@ -78,6 +78,58 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
+# LocalStorage Sync Bridge (Persists locations across iOS Home Screen app close/reopen)
+loc2_js_lat = str(st.session_state.loc2["lat"]) if st.session_state.loc2 else ""
+loc2_js_lon = str(st.session_state.loc2["lon"]) if st.session_state.loc2 else ""
+loc2_js_name = st.session_state.loc2["name"].replace('"', '\\"') if st.session_state.loc2 else ""
+loc2_js_en = "1" if st.session_state.loc2_enabled else "0"
+has_loc2_url = "true" if ("loc2_lat" in st.query_params) else "false"
+has_loc1_url = "true" if ("lat" in st.query_params) else "false"
+
+components.html(
+    f"""
+    <script>
+    (function() {{
+        const p = window.parent;
+        const url = new URL(p.location.href);
+        let changed = false;
+
+        // Sync Primary Location
+        if ({has_loc1_url}) {{
+            localStorage.setItem('mw_lat', url.searchParams.get('lat'));
+            localStorage.setItem('mw_lon', url.searchParams.get('lon'));
+            localStorage.setItem('mw_city', url.searchParams.get('city') || '');
+        }} else if (localStorage.getItem('mw_lat') && localStorage.getItem('mw_lon')) {{
+            url.searchParams.set('lat', localStorage.getItem('mw_lat'));
+            url.searchParams.set('lon', localStorage.getItem('mw_lon'));
+            if (localStorage.getItem('mw_city')) url.searchParams.set('city', localStorage.getItem('mw_city'));
+            changed = true;
+        }}
+
+        // Sync 2nd Location & Toggle
+        if ({has_loc2_url}) {{
+            localStorage.setItem('mw_loc2_lat', "{loc2_js_lat}");
+            localStorage.setItem('mw_loc2_lon', "{loc2_js_lon}");
+            localStorage.setItem('mw_loc2_name', "{loc2_js_name}");
+            localStorage.setItem('mw_loc2_en', "{loc2_js_en}");
+        }} else if (localStorage.getItem('mw_loc2_lat') && localStorage.getItem('mw_loc2_lon')) {{
+            url.searchParams.set('loc2_lat', localStorage.getItem('mw_loc2_lat'));
+            url.searchParams.set('loc2_lon', localStorage.getItem('mw_loc2_lon'));
+            if (localStorage.getItem('mw_loc2_name')) url.searchParams.set('loc2_name', localStorage.getItem('mw_loc2_name'));
+            url.searchParams.set('loc2_en', localStorage.getItem('mw_loc2_en') || '1');
+            changed = true;
+        }}
+
+        if (changed) {{
+            p.location.replace(url.toString());
+        }}
+    }})();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
 # 3. Lightweight Multilingual Dictionary (Concise & Clean)
 TRANSLATIONS = {
     "en": {
@@ -1161,8 +1213,7 @@ with col_b3:
 
 with col_b4:
     open_4 = (st.session_state.active_expander == "overlay")
-    plus_svg = '<svg viewBox="0 0 16 16" width="16" height="16" style="vertical-align: middle;"><path d="M8 3v10M3 8h10" stroke="#d1d5db" stroke-width="2.2" stroke-linecap="round"/></svg>'
-    if st.button(plus_svg, use_container_width=True, key="btn_overlay"):
+    if st.button("➕", use_container_width=True, key="btn_overlay"):
         st.session_state.active_expander = None if open_4 else "overlay"
         st.rerun()
 
@@ -1232,6 +1283,10 @@ if st.session_state.active_expander == "loc":
                     st.query_params["loc2_lon"] = str(loc2_cache["lon"])
                     st.query_params["loc2_name"] = loc2_cache["name"]
                     st.query_params["loc2_en"] = "1" if loc2_en_cache else "0"
+                components.html(
+                    "<script>localStorage.removeItem('mw_lat'); localStorage.removeItem('mw_lon'); localStorage.removeItem('mw_city');</script>",
+                    height=0, width=0
+                )
                 st.session_state.active_expander = None
                 st.rerun()
 
@@ -1265,6 +1320,10 @@ if st.session_state.active_expander == "loc":
                 for p in ["loc2_lat", "loc2_lon", "loc2_name", "loc2_en"]:
                     if p in st.query_params:
                         del st.query_params[p]
+                components.html(
+                    "<script>localStorage.removeItem('mw_loc2_lat'); localStorage.removeItem('mw_loc2_lon'); localStorage.removeItem('mw_loc2_name'); localStorage.removeItem('mw_loc2_en');</script>",
+                    height=0, width=0
+                )
                 st.session_state.active_expander = None
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
