@@ -809,22 +809,35 @@ def build_svg_block(charts_to_render):
             h_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_h)
             svg_parts.append(f'<polyline points="{h_str}" fill="none" stroke="#16a085" stroke-width="2.2"/>')
 
+            # High % chance pill (removed '%' symbol)
             max_prob = int(round(max(probs)))
             max_prob_idx = probs.index(max(probs))
             px_prob, py_prob = pts_p[max_prob_idx]
             px_prob = max(PAD_L + 22, min(W - PAD_R - 22, px_prob))
 
             svg_parts.append(f'<rect x="{px_prob-19}" y="{py_prob-7.5}" width="38" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
-            svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}%</text>')
+            svg_parts.append(f'<text x="{px_prob}" y="{py_prob+3.5}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_prob}</text>')
 
+            # Peak mm pill (clamped strictly inside RainGraph bounds y0+2 .. y1-2)
             max_mm = max(mms)
             if max_mm > 0.0:
                 peak_idx = mms.index(max_mm)
                 px_mm, py_mm = pts_p[peak_idx]
                 px_mm = max(PAD_L + 22, min(W - PAD_R - 22, px_mm))
-                svg_parts.append(f'<rect x="{px_mm-22}" y="{py_mm+4}" width="44" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
-                svg_parts.append(f'<text x="{px_mm}" y="{py_mm+15}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
+                
+                # Place below curve if room, otherwise place above curve so it never crosses y1 into Wind strip
+                pill_top = py_mm + 4
+                if pill_top + 15 > y1 - 2:
+                    pill_top = py_mm - 19
+                    # Avoid colliding directly with % chance pill if at the same X
+                    if abs(px_mm - px_prob) < 42 and abs(pill_top - (py_prob - 7.5)) < 17:
+                        pill_top = py_prob - 24
+                pill_top = max(y0 + 2, min(y1 - 17, pill_top))
 
+                svg_parts.append(f'<rect x="{px_mm-22}" y="{pill_top}" width="44" height="15" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.75" rx="3"/>')
+                svg_parts.append(f'<text x="{px_mm}" y="{pill_top+11}" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">{max_mm:.1f}mm</text>')
+
+            # Humidity High & Low pills (removed '%' symbol)
             max_h_val = max(hums_raw)
             min_h_val = min(hums_raw)
             max_h_int = int(round(max_h_val))
@@ -843,10 +856,10 @@ def build_svg_block(charts_to_render):
                 lhx = min(W - PAD_R - 22, lhx + 42) if lhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, lhx - 42)
 
             svg_parts.append(f'<rect x="{hhx-19}" y="{hhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}%</text>')
+            svg_parts.append(f'<text x="{hhx}" y="{hhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{max_h_int}</text>')
 
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
-            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}%</text>')
+            svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
@@ -854,9 +867,11 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">%</text>')
 
+            # Xmm/24 pill: border matches %chance line (#2980b9), hidden if 0.0mm
             total_24h = sum(mms[:24])
-            svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
-            svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
+            if total_24h >= 0.05:
+                svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.85" rx="2"/>')
+                svg_parts.append(f'<text x="{icon_x + 18}" y="{y0+32}" font-size="8.5" font-weight="600" fill="#ffffff" text-anchor="middle">{total_24h:.1f}mm/24</text>')
 
         elif metric == "wind":
             winds_raw = slice_data["wind"]
