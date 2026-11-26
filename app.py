@@ -24,12 +24,10 @@ if "unit_wind" not in st.session_state:
     st.session_state.unit_wind = "mph"
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
-if "loc2_enabled" not in st.session_state:
-    st.session_state.loc2_enabled = True
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
 
-# Load 2nd Location from Query Params immediately at startup if present
+# Load 2nd Location & Toggle State from Query Params immediately at startup if present
 if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
     try:
         st.session_state.loc2 = {
@@ -37,10 +35,13 @@ if "loc2_lat" in st.query_params and "loc2_lon" in st.query_params:
             "lon": float(st.query_params["loc2_lon"]),
             "name": st.query_params.get("loc2_name", "2nd Location")
         }
+        st.session_state.loc2_enabled = st.query_params.get("loc2_en", "1") == "1"
     except Exception:
         st.session_state.loc2 = None
+        st.session_state.loc2_enabled = True
 elif "loc2" not in st.session_state:
     st.session_state.loc2 = None
+    st.session_state.loc2_enabled = True
 
 # Primary Geolocation & Persistent State
 if "lat" in st.query_params and "lon" in st.query_params:
@@ -643,6 +644,9 @@ def build_svg_block(charts_to_render):
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
+        # Midnight vertical line rendered first per chart strip so it sits behind pills & icons
+        svg_parts.append(f'<line x1="{midnight_x:.1f}" y1="{y0}" x2="{midnight_x:.1f}" y2="{y1}" stroke="currentColor" stroke-width="1" opacity="0.25"/>')
+
         # GRAPH 1 (TEMP — RED & ORANGE)
         if metric == "temp":
             all_t = slice_data["temp"] + slice_data["feels"]
@@ -1172,11 +1176,13 @@ if st.session_state.active_expander == "loc":
                 st.session_state.lon = -0.1285
                 st.session_state.city = "Peterborough"
                 loc2_cache = st.session_state.loc2
+                loc2_en_cache = st.session_state.loc2_enabled
                 st.query_params.clear()
                 if loc2_cache:
                     st.query_params["loc2_lat"] = str(loc2_cache["lat"])
                     st.query_params["loc2_lon"] = str(loc2_cache["lon"])
                     st.query_params["loc2_name"] = loc2_cache["name"]
+                    st.query_params["loc2_en"] = "1" if loc2_en_cache else "0"
                 st.session_state.active_expander = None
                 st.rerun()
 
@@ -1191,6 +1197,7 @@ if st.session_state.active_expander == "loc":
                     st.query_params["loc2_lat"] = str(res2[0])
                     st.query_params["loc2_lon"] = str(res2[1])
                     st.query_params["loc2_name"] = res2[2]
+                    st.query_params["loc2_en"] = "1"
                     st.session_state.active_expander = None
                     st.rerun()
                 else:
@@ -1200,17 +1207,15 @@ if st.session_state.active_expander == "loc":
             toggle_state = st.checkbox(T["toggle_loc2"], value=st.session_state.loc2_enabled, key="cb_loc2_toggle")
             if toggle_state != st.session_state.loc2_enabled:
                 st.session_state.loc2_enabled = toggle_state
+                st.query_params["loc2_en"] = "1" if toggle_state else "0"
                 st.rerun()
 
             if st.button(f"{T['clear_btn']} ({st.session_state.loc2['name']})", use_container_width=True, key="clear_loc2_btn"):
                 st.session_state.loc2 = None
                 st.session_state.loc2_enabled = True
-                if "loc2_lat" in st.query_params:
-                    del st.query_params["loc2_lat"]
-                if "loc2_lon" in st.query_params:
-                    del st.query_params["loc2_lon"]
-                if "loc2_name" in st.query_params:
-                    del st.query_params["loc2_name"]
+                for p in ["loc2_lat", "loc2_lon", "loc2_name", "loc2_en"]:
+                    if p in st.query_params:
+                        del st.query_params[p]
                 st.session_state.active_expander = None
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
