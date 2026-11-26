@@ -140,7 +140,7 @@ TRANSLATIONS = {
         "toggle_loc2": "Show 2nd Location Overlays",
         "units_head": "Units & Language Settings",
         "guide_md": """
-* **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance.
+* **Temp / Feels-Like:** Red line is air temp; orange line & delta pill show feels-like variance. Shaded blue band highlights freezing ($0^\\circ\\text{C}$) conditions.
 * **Precip / Humidity:** Blue curve shows rain probability & peak mm/24h; teal line tracks humidity.
 * **Wind:** Slate grey lines track speed and gusts with direction arrows.
 * **Visibility:** Teal gradient highlights tracking haze and hazard thresholds.
@@ -563,6 +563,9 @@ if st.session_state.loc2 and st.session_state.loc2_enabled:
             "uv": get_slice2("uv_index", 0.0),
         }
 
+# Preserve raw Celsius temperatures for freeze checking before unit conversion
+temp_raw_celsius = list(slice_data["temp"])
+
 if st.session_state.unit_temp == "F":
     slice_data["temp"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["temp"]]
     slice_data["feels"] = [round(c * 9 / 5 + 32, 1) for c in slice_data["feels"]]
@@ -586,14 +589,19 @@ loc2_pill = (
     else ""
 )
 
-logo_html = ""
-try:
-    import base64
-    with open("logo.png", "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("utf-8")
-        logo_html = f'<img src="data:image/png;base64,{encoded}" style="width:40px; height:auto; margin-left:8px; flex-shrink:0;" />'
-except Exception:
-    logo_html = '<div style="border: 2px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; opacity: 0.6; margin-left: 8px; flex-shrink:0;">Logo</div>'
+# Load dual logos (summer & winter side by side)
+import base64
+
+def get_encoded_logo(filename, label):
+    try:
+        with open(filename, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("utf-8")
+            return f'<img src="data:image/png;base64,{encoded}" style="width:34px; height:auto; flex-shrink:0;" title="{label}"/>'
+    except Exception:
+        return f'<div style="border: 1.5px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.48rem; opacity: 0.6; flex-shrink:0;" title="{label}">{label}</div>'
+
+logo_summer_html = get_encoded_logo("logo_summer.png", "Summer")
+logo_winter_html = get_encoded_logo("logo_winter.png", "Winter")
 
 st.markdown(
     f"""
@@ -602,14 +610,15 @@ st.markdown(
             <div style="display: flex; align-items: baseline; gap: 6px; white-space: nowrap;">
                 <span style="font-size: 1.3rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.3px;">MyWeather</span>
                 <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">{timestamp_str}</span>
+                <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85; margin-left: 4px;">🔄</a>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; white-space: nowrap;">
                 <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85; overflow: hidden; text-overflow: ellipsis;">📍 {city_name}{loc2_pill}</div>
-                <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85; margin-left: 8px;">🔄</a>
             </div>
         </div>
-        <div>
-            {logo_html}
+        <div style="display: flex; align-items: center; gap: 6px; margin-left: 8px;">
+            {logo_summer_html}
+            {logo_winter_html}
         </div>
     </div>
     """,
@@ -737,6 +746,26 @@ def build_svg_block(charts_to_render):
                 all_t += slice_data_2["temp"]
             min_t = math.floor(min(all_t) - 2)
             max_t = math.ceil(max(all_t) + 2)
+
+            # Check if freezing point (<= 0°C) occurs in forecast
+            has_freezing = any(c <= 0.0 for c in temp_raw_celsius)
+            if has_freezing:
+                freeze_val_c = 0.0
+                freeze_val = freeze_val_c if st.session_state.unit_temp == "C" else (freeze_val_c * 9/5 + 32)
+                y_freeze = bot_pad - max(0.0, min(1.0, (freeze_val - min_t) / max(max_t - min_t, 0.1))) * (bot_pad - top_pad)
+                y_freeze = max(top_pad, min(bot_pad, y_freeze))
+                
+                freeze_grad_id = f"freezeGrad_{row_idx}"
+                svg_parts.append(
+                    f'<defs>'
+                    f'<linearGradient id="{freeze_grad_id}" gradientUnits="userSpaceOnUse" x1="0" y1="{y_freeze}" x2="0" y2="{bot_pad}">'
+                    f'<stop offset="0%" stop-color="#3b82f6" stop-opacity="0.22"/>'
+                    f'<stop offset="100%" stop-color="#2563eb" stop-opacity="0.38"/>'
+                    f'</linearGradient>'
+                    f'</defs>'
+                )
+                svg_parts.append(f'<rect x="{PAD_L}" y="{y_freeze}" width="{PLOT_W}" height="{bot_pad - y_freeze}" fill="url(#{freeze_grad_id})"/>')
+                svg_parts.append(f'<line x1="{PAD_L}" y1="{y_freeze}" x2="{W-PAD_R}" y2="{y_freeze}" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,3" opacity="0.85"/>')
 
             pts_t = make_points(slice_data["temp"], min_t, max_t, top_pad, bot_pad)
             pts_f = make_points(slice_data["feels"], min_t, max_t, top_pad, bot_pad)
