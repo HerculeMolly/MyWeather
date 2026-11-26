@@ -302,7 +302,7 @@ st.markdown(
 )
 
 
-# 5. Multi-Tier Weather Fetchers
+# 5. Multi-Tier Weather & Pollen Fetchers
 @st.cache_data(ttl=1800)
 def fetch_open_meteo(latitude, longitude):
     url = (
@@ -315,6 +315,23 @@ def fetch_open_meteo(latitude, longitude):
     response = requests.get(url, headers=headers, timeout=6)
     response.raise_for_status()
     return response.json()
+
+
+@st.cache_data(ttl=1800)
+def fetch_air_quality(latitude, longitude):
+    url = (
+        f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={latitude}&longitude={longitude}"
+        "&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen"
+        "&timezone=auto&forecast_days=2"
+    )
+    headers = {"User-Agent": "MyWeatherApp/1.0"}
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+    except Exception:
+        pass
+    return None
 
 
 @st.cache_data(ttl=1800)
@@ -388,6 +405,7 @@ def get_weather_with_fallback(latitude, longitude):
 
 
 data, is_stale = get_weather_with_fallback(lat, lon)
+aq_data = fetch_air_quality(lat, lon)
 
 tz_name = data.get("timezone", "Europe/London") if data else "Europe/London"
 try:
@@ -415,7 +433,7 @@ if is_stale or not data or "hourly" not in data:
         "hum": [72] * 25,
         "press": [1014] * 25,
         "uv": [2.0] * 25,
-        "pollen": [2.5] * 25,
+        "pollen": [2.0] * 25,
     }
     sunrise_hours = [7]
     sunset_hours = [17]
@@ -438,7 +456,38 @@ else:
         return sliced
 
     uv_raw = get_slice("uv_index", 0.0)
-    pollen_raw = [round(max(0.0, 4.0 * math.sin((i / 24.0) * math.pi)), 1) for i in range(25)]
+    
+    # Process true aggregate pollen from Open-Meteo Air Quality API
+    pollen_raw = [2.0] * 25
+    if aq_data and "hourly" in aq_data:
+        aq_h = aq_data["hourly"]
+        aq_times = aq_h.get("time", [])
+        try:
+            aq_start = 0
+            for idx, t in enumerate(aq_times):
+                if t.startswith(current_hour_prefix):
+                    aq_start = idx
+                    break
+            aq_end = min(aq_start + 25, len(aq_times))
+            
+            alder = aq_h.get("alder_pollen", [0]*len(aq_times))
+            birch = aq_h.get("birch_pollen", [0]*len(aq_times))
+            grass = aq_h.get("grass_pollen", [0]*len(aq_times))
+            mugwort = aq_h.get("mugwort_pollen", [0]*len(aq_times))
+            olive = aq_h.get("olive_pollen", [0]*len(aq_times))
+            ragweed = aq_h.get("ragweed_pollen", [0]*len(aq_times))
+            
+            pollen_combined = []
+            for i in range(aq_start, aq_end):
+                # Sum common pollens and scale to a 0-5 index
+                total = (alder[i] or 0) + (birch[i] or 0) + (grass[i] or 0) + (mugwort[i] or 0) + (olive[i] or 0) + (ragweed[i] or 0)
+                pollen_combined.append(round(min(5.0, total / 20.0), 1))
+            
+            while len(pollen_combined) < 25:
+                pollen_combined.append(pollen_combined[-1] if pollen_combined else 2.0)
+            pollen_raw = pollen_combined
+        except Exception:
+            pass
 
     slice_data = {
         "times": get_slice("time", now.strftime("%Y-%m-%dT%H:00")),
@@ -644,7 +693,7 @@ def build_svg_block(charts_to_render):
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
-        # Midnight vertical line rendered first per chart strip so it sits behind pills & icons
+        # Midnight vertical line rendered first per chart strip
         svg_parts.append(f'<line x1="{midnight_x:.1f}" y1="{y0}" x2="{midnight_x:.1f}" y2="{y1}" stroke="currentColor" stroke-width="1" opacity="0.25"/>')
 
         # GRAPH 1 (TEMP — RED & ORANGE)
@@ -715,7 +764,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('<circle cx="0" cy="3.5" r="1.1" fill="currentColor"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">°{st.session_state.unit_temp}</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
         # GRAPH 2 (COMBINED PRECIPITATION PROBABILITY & HUMIDITY)
         elif metric == "precip_hum":
@@ -764,7 +813,7 @@ def build_svg_block(charts_to_render):
             min_h_idx = hums_raw.index(min_h_val)
 
             hhx, hhy = pts_h[max_h_idx]
-            lhx, lhy = pts_h[min_h_idx]
+            lhx, lwy = pts_h[min_h_idx]
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
@@ -783,7 +832,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 C-3 -2, -4 0, -4 2 A 4 4 0 0 0 4 2 C 4 0, 3 -2, 0 -5 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">%</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">%</text>')
 
             total_24h = sum(mms[:24])
             svg_parts.append(f'<rect x="{icon_x - 3}" y="{y0+23}" width="42" height="13" fill="#1f1f1f" stroke="currentColor" stroke-width="0.5" rx="2"/>')
@@ -875,7 +924,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M3 7 h10 c1.5 0 2.5 1 2.5 2.5 s-1 2.5 -2.5 2.5 h-3"/>')
             svg_parts.append('<path d="M2 12 h6 c1.2 0 2 0.8 2 2 s-0.8 2 -2 2 h-0.5"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{st.session_state.unit_wind}</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{st.session_state.unit_wind}</text>')
 
         # GRAPH 4 (VISIBILITY)
         elif metric == "vis":
@@ -961,7 +1010,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<path d="M-5 0 C-2 -3.5, 2 -3.5, 5 0 C 2 3.5, -2 3.5, -5 0 Z" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('<circle cx="0" cy="0" r="1.5" fill="currentColor"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">{unit_label}</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{unit_label}</text>')
 
         # GRAPH 5 (PRESSURE)
         elif metric == "press":
@@ -1016,7 +1065,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('<circle cx="0" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('<path d="M-2 -1.5 L0 -4 L2 -1.5" fill="none" stroke="currentColor" stroke-width="1.1"/>')
             svg_parts.append('</g>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="11" font-weight="600" fill="currentColor">hPa</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">hPa</text>')
 
         # GRAPH 6 (COMBINED UV & POLLEN OVERLAY STRIP)
         elif metric == "uv_pollen":
@@ -1078,7 +1127,7 @@ def build_svg_block(charts_to_render):
                 last_x = px
 
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
-            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15}" font-size="10" font-weight="700" fill="currentColor">UV/Pol</text>')
+            svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">UV/Pol</text>')
 
     svg_parts.append("</svg>")
     wrapper_cls = "charts-wrapper charts-desaturated" if is_stale else "charts-wrapper"
@@ -1113,7 +1162,9 @@ with col_b3:
 
 with col_b4:
     open_4 = (st.session_state.active_expander == "overlay")
-    if st.button("➕", use_container_width=True, key="btn_overlay"):
+    # Lighter plus symbol color for dark mode button visibility
+    plus_svg = '<svg viewBox="0 0 16 16" width="16" height="16" style="vertical-align: middle;"><path d="M8 3v10M3 8h10" stroke="#d1d5db" stroke-width="2.2" stroke-linecap="round"/></svg>'
+    if st.button(plus_svg, use_container_width=True, key="btn_overlay"):
         st.session_state.active_expander = None if open_4 else "overlay"
         st.rerun()
 
