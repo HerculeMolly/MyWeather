@@ -686,8 +686,8 @@ def get_encoded_logo(filename, label):
     except Exception:
         return f'<div style="border: 1.5px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.48rem; opacity: 0.6; flex-shrink:0;" title="{label}">{label}</div>'
 
-logo_summer_html = get_encoded_logo("logo_summer.png", "Summer")
 logo_winter_html = get_encoded_logo("logo_winter.png", "Winter")
+logo_summer_html = get_encoded_logo("logo_summer.png", "Summer")
 
 st.markdown(
     f"""
