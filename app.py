@@ -215,16 +215,6 @@ st.markdown(
         margin: 0 auto;
     }
     
-    /* Header layout optimization */
-    [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-    }
-    
     /* Force 4 Equal Columns for Action Buttons with 20% height reduction & 50% gap reduction */
     div[data-testid="stHorizontalBlock"]:has(button) {
         display: flex !important;
@@ -588,9 +578,7 @@ if st.session_state.unit_wind == "mph":
     if slice_data_2:
         slice_data_2["vis"] = [round(v * 0.621371, 2) for v in slice_data_2["vis"]]
 
-# 6. Header Row (Fixed column ratio to prevent MyWeather title wrapping)
-col_head, col_logo = st.columns([4, 1])
-
+# 6. Header Row (Unified Single-Line Flex Container to Prevent Vertical Stacking)
 badge_cls = "stale-badge" if is_stale else ""
 loc2_pill = (
     f'<span style="font-size:0.68rem; opacity:0.75; margin-left:6px;">⋯ {st.session_state.loc2["name"]}</span>'
@@ -598,29 +586,35 @@ loc2_pill = (
     else ""
 )
 
-with col_head:
-    st.markdown(
-        f"""
-        <div style="display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; white-space: nowrap;">
-            <h1 style="margin: 0; font-size: 1.3rem; font-weight: 800; line-height: 1.1;">MyWeather</h1>
-            <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">{timestamp_str}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; white-space: nowrap;">
-            <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85; overflow: hidden; text-overflow: ellipsis;">📍 {city_name}{loc2_pill}</div>
-            <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85; margin-left: 8px;">🔄</a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+logo_html = ""
+try:
+    import base64
+    with open("logo.png", "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+        logo_html = f'<img src="data:image/png;base64,{encoded}" style="width:40px; height:auto; margin-left:8px; flex-shrink:0;" />'
+except Exception:
+    logo_html = '<div style="border: 2px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; opacity: 0.6; margin-left: 8px; flex-shrink:0;">Logo</div>'
 
-with col_logo:
-    try:
-        st.image("logo.png", width=44)
-    except Exception:
-        st.markdown(
-            '<div style="border: 2px dashed rgba(128,128,128,0.4); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; opacity: 0.6; margin-left: auto;">Logo</div>',
-            unsafe_allow_html=True,
-        )
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 4px;">
+        <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+            <div style="display: flex; align-items: baseline; gap: 6px; white-space: nowrap;">
+                <span style="font-size: 1.3rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.3px;">MyWeather</span>
+                <span class="{badge_cls}" style="font-size: 0.74rem; opacity: 0.8; font-weight: 700; letter-spacing: -0.2px;">{timestamp_str}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; white-space: nowrap;">
+                <div style="font-size: 0.78rem; font-weight: 600; opacity: 0.85; overflow: hidden; text-overflow: ellipsis;">📍 {city_name}{loc2_pill}</div>
+                <a href="?refresh=1" target="_self" title="Refresh" style="font-size: 0.82rem; text-decoration: none; background: rgba(128,128,128,0.12); padding: 1px 7px; border-radius: 4px; color: inherit; opacity: 0.85; margin-left: 8px;">🔄</a>
+            </div>
+        </div>
+        <div>
+            {logo_html}
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # 7. Synchronized SVG Chart Builder
