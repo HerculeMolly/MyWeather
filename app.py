@@ -253,7 +253,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture
+# 4. Shared WashDry CSS Architecture (with bulletproof mobile flex fixes)
 st.markdown(
     """
     <style>
@@ -334,6 +334,8 @@ st.markdown(
         padding-bottom: 0 !important;
         background-color: #2d2d2d !important;
     }
+    
+    /* Bulletproof mobile flex overrides for graph order rows */
     .dropdown-box div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -341,6 +343,10 @@ st.markdown(
         align-items: center !important;
         gap: 4px !important;
         margin-bottom: 2px !important;
+        width: 100% !important;
+    }
+    .dropdown-box div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        min-width: 0 !important;
     }
     .dropdown-box button {
         min-height: 26px !important;
@@ -1503,19 +1509,19 @@ elif st.session_state.active_expander == "units":
 
         st.markdown("<hr style='margin: 8px 0 6px 0; border-color: rgba(255,255,255,0.18);'/>", unsafe_allow_html=True)
 
-        # Compact 6-graph sort list with inline side-by-side arrow buttons to fit iPhone perfectly
+        # Compact 6-graph sort list with responsive column ratios for iPhone
         order = st.session_state.graph_order
         for idx, g_key in enumerate(order):
             g_label = T["graphs"].get(g_key, g_key)
             screen_tag = "Main" if idx < 4 else "More"
             badge_bg = "rgba(39, 174, 96, 0.35)" if idx < 4 else "rgba(128, 128, 128, 0.25)"
             
-            r_col1, r_col2, r_col3 = st.columns([5.5, 2.25, 2.25])
+            r_col1, r_col2, r_col3 = st.columns([5.2, 2.4, 2.4])
             with r_col1:
                 st.markdown(
-                    f"<div style='font-size:0.76rem; line-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
+                    f"<div style='font-size:0.75rem; line-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
                     f"<span style='opacity:0.65; font-weight:700;'>{idx+1}.</span> <b>{g_label}</b> "
-                    f"<span style='font-size:0.62rem; background:{badge_bg}; padding:1px 3px; border-radius:3px;'>{screen_tag}</span>"
+                    f"<span style='font-size:0.6rem; background:{badge_bg}; padding:1px 3px; border-radius:3px;'>{screen_tag}</span>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
