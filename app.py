@@ -940,11 +940,11 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<g transform="translate({dx-11}, {dy})">{arrow_svg}</g>')
             svg_parts.append(f'<text x="{dx+4}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{abs_diff_str}</text>')
 
+            # Exact Custom Thermometer Icon (Box 18x18, perfectly centered & tightly margined)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="none" stroke="#ef4444" stroke-width="1.2"/>')
-            svg_parts.append('<circle cx="0" cy="3.5" r="1.5" fill="#ef4444"/>')
-            svg_parts.append('<path d="M0 0.5 v2.5" stroke="#ef4444" stroke-width="1.4"/>')
+            svg_parts.append('<path d="M0 -6.5 v6 a2.2 2.2 0 1 1 -1.8 0 v-6 a1.8 1.8 0 1 1 3.6 0 z" fill="#ef4444"/>')
+            svg_parts.append('<circle cx="0" cy="4.2" r="1.4" fill="#ef4444"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">°{st.session_state.unit_temp}</text>')
 
@@ -1020,13 +1020,11 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
 
+            # Exact Custom Rain/Humidity Icon in Graph Line Blue (#2980b9), Tightly Filled Box
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M-5 1 C-5 -3.5, 5 -3.5, 5 1 C 2.5 0, -2.5 0, -5 1 Z" fill="#2980b9"/>')
-            svg_parts.append('<path d="M0 -1 v3.5 a1.5 1.5 0 0 1 -1.5 1.5" fill="none" stroke="#2980b9" stroke-width="1.1" stroke-linecap="round"/>')
-            svg_parts.append('<line x1="-5.5" y1="-2" x2="-4.5" y2="-0.5" stroke="#2980b9" stroke-width="1" stroke-linecap="round"/>')
-            svg_parts.append('<line x1="5.5" y1="-2" x2="4.5" y2="-0.5" stroke="#2980b9" stroke-width="1" stroke-linecap="round"/>')
-            svg_parts.append('<line x1="0" y1="-4.5" x2="0" y2="-3" stroke="#2980b9" stroke-width="1" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M-6 1.2 C-6 -4.2, 6 -4.2, 6 1.2 C 3 0, -3 0, -6 1.2 Z" fill="#2980b9"/>')
+            svg_parts.append('<path d="M0 -1.5 v3.8 a1.5 1.5 0 0 1 -1.5 1.5" fill="none" stroke="#2980b9" stroke-width="1.2" stroke-linecap="round"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">%</text>')
 
@@ -1117,10 +1115,11 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
+            # Exact Custom Wind Icon (Box 18x18, tightly filled)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M-6 -2 c3 0 5 -2 5 -4 a2 2 0 0 0 -4 -2 c-3 0 -5 3 -5 6 h9" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round"/>')
-            svg_parts.append('<path d="M-7 3 c4 0 6 -2 6 -4 a1.5 1.5 0 0 0 -3 -1 c-2 0 -3 2 -3 4 h10" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M-6 -2.5 c3.5 0 6 -2.2 6 -4.5 a2 2 0 0 0 -4 -2 c-2.5 0 -4.5 2.5 -4.5 5.5 h8.5" fill="none" stroke="#64748b" stroke-width="1.3" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M-7 3.5 c4.5 0 7.5 -2.2 7.5 -4.5 a1.8 1.8 0 0 0 -3.5 -1 c-2 0 -4 2 -4 4.5 h11" fill="none" stroke="#64748b" stroke-width="1.3" stroke-linecap="round"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{st.session_state.unit_wind}</text>')
 
@@ -1204,13 +1203,11 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{badge_x-9}" y="{y_danger-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
                 svg_parts.append(f'<text x="{badge_x}" y="{y_danger-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{d_label}</text>')
 
+            # Exact Custom Eye Icon (Box 18x18, tightly filled)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M-6 0 C-3 -3.5, 3 -3.5, 6 0 C 3 3.5, -3 3.5, -6 0 Z" fill="none" stroke="#16a085" stroke-width="1.2"/>')
-            svg_parts.append('<circle cx="0" cy="0" r="1.8" fill="#16a085"/>')
-            svg_parts.append('<line x1="7" y1="-2" x2="9" y2="-3" stroke="#16a085" stroke-width="1.1" stroke-linecap="round"/>')
-            svg_parts.append('<line x1="8" y1="0" x2="10" y2="0" stroke="#16a085" stroke-width="1.1" stroke-linecap="round"/>')
-            svg_parts.append('<line x1="7" y1="2" x2="9" y2="3" stroke="#16a085" stroke-width="1.1" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M-6.5 0 C-3.5 -4.2, 3.5 -4.2, 6.5 0 C 3.5 4.2, -3.5 4.2, -6.5 0 Z" fill="none" stroke="#16a085" stroke-width="1.3"/>')
+            svg_parts.append('<circle cx="0" cy="0" r="2" fill="#16a085"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">{unit_label}</text>')
 
@@ -1261,12 +1258,13 @@ def build_svg_block(charts_to_render):
                     svg_parts.append(f'<rect x="{tx-18}" y="{ty+5}" width="36" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
                     svg_parts.append(f'<text x="{tx}" y="{ty+14.5}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">{trend_txt}</text>')
 
+            # Exact Custom Pressure Icon in Graph Line Purple (#8e44ad), Tightly Filled Box
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<path d="M0 -6 L0 -2 M-2 -4 L0 -2 L2 -4" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>')
-            svg_parts.append('<path d="M-5 -1 C-2 -2, 2 -2, 5 -1" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-linecap="round"/>')
-            svg_parts.append('<path d="M-5 1 C-2 2, 2 2, 5 1" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-linecap="round"/>')
-            svg_parts.append('<path d="M0 6 L0 2 M-2 4 L0 2 L2 4" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>')
+            svg_parts.append('<path d="M0 -6.5 L0 -2.5 M-2 -4.5 L0 -2.5 L2 -4.5" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>')
+            svg_parts.append('<path d="M-6 -1.2 C-3 -2.2, 3 -2.2, 6 -1.2" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M-6 1.2 C-3 2.2, 3 2.2, 6 1.2" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round"/>')
+            svg_parts.append('<path d="M0 6.5 L0 2.5 M-2 4.5 L0 2.5 L2 4.5" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">hPa</text>')
 
@@ -1328,18 +1326,15 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<text x="{px}" y="{py+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{rating_label}</text>')
                 last_x = px
 
+            # Exact Custom UV/Pollen Icon (Box 18x18, tightly filled)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
-            svg_parts.append('<circle cx="0" cy="-2" r="2.2" fill="#f39c12"/>')
-            svg_parts.append('<circle cx="-0.8" cy="-2.8" r="0.6" fill="#27ae60"/>')
-            svg_parts.append('<circle cx="0.8" cy="-1.2" r="0.6" fill="#27ae60"/>')
-            svg_parts.append('<circle cx="0" cy="-4" r="0.6" fill="#27ae60"/>')
-            svg_parts.append('<polygon points="0,-6.5 0.7,-5 -0.7,-5" fill="#f39c12"/>')
-            svg_parts.append('<polygon points="4,-2 2.8,-1.2 2.8,-2.8" fill="#f39c12"/>')
-            svg_parts.append('<polygon points="-4,-2 -2.8,-1.2 -2.8,-2.8" fill="#f39c12"/>')
-            svg_parts.append('<path d="M-2.5 3.5 L-2.5 6.5 M-3.5 5.5 L-2.5 6.5 L-1.5 5.5" fill="none" stroke="#f39c12" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>')
-            svg_parts.append('<path d="M0 3.5 L0 6.5 M-1 5.5 L0 6.5 L1 5.5" fill="none" stroke="#f39c12" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>')
-            svg_parts.append('<path d="M2.5 3.5 L2.5 6.5 M1.5 5.5 L2.5 6.5 L3.5 5.5" fill="none" stroke="#f39c12" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>')
+            svg_parts.append('<circle cx="0" cy="-2.2" r="2.5" fill="#f39c12"/>')
+            svg_parts.append('<circle cx="-1" cy="-3.2" r="0.7" fill="#27ae60"/>')
+            svg_parts.append('<circle cx="1" cy="-1.2" r="0.7" fill="#27ae60"/>')
+            svg_parts.append('<polygon points="0,-6.8 0.8,-5.2 -0.8,-5.2" fill="#f39c12"/>')
+            svg_parts.append('<polygon points="4.5,-2.2 3,-1.4 3,-3" fill="#f39c12"/>')
+            svg_parts.append('<polygon points="-4.5,-2.2 -3,-1.4 -3,-3" fill="#f39c12"/>')
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">UV/Pol</text>')
 
