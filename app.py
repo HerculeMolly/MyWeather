@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime, timedelta
 import math
 import time
@@ -160,13 +161,13 @@ TRANSLATIONS = {
         "clear_btn": "Clear 2nd Location",
         "reset_btn": "Reset Default",
         "toggle_loc2": "Show 2nd Location Overlays",
-        "units_head": "Units, Language & Graph Order (Top 4 on Main Screen)",
+        "units_head": "Units, Lang & Graph Order (Top 4 Main)",
         "graphs": {
-            "temp": "Temp & Feels-Like",
-            "precip_hum": "Precip & Humidity",
+            "temp": "Temp & Feels",
+            "precip_hum": "Rain & Humid",
             "wind": "Wind & Gusts",
             "vis": "Visibility",
-            "press": "Pressure (hPa)",
+            "press": "Pressure",
             "uv_pollen": "UV & Pollen",
         },
         "guide_md": """
@@ -185,13 +186,13 @@ TRANSLATIONS = {
         "clear_btn": "Effacer 2e Lieu",
         "reset_btn": "Réinitialiser",
         "toggle_loc2": "Afficher les courbes du 2e lieu",
-        "units_head": "Unités, Langue & Ordre des Graphiques",
+        "units_head": "Unités, Langue & Ordre (4 Principaux)",
         "graphs": {
             "temp": "Temp & Ressenti",
             "precip_hum": "Pluie & Humidité",
             "wind": "Vent & Rafales",
             "vis": "Visibilité",
-            "press": "Pression (hPa)",
+            "press": "Pression",
             "uv_pollen": "UV & Pollen",
         },
         "guide_md": """
@@ -209,13 +210,13 @@ TRANSLATIONS = {
         "clear_btn": "Löschen",
         "reset_btn": "Zurücksetzen",
         "toggle_loc2": "2. Standort einblenden",
-        "units_head": "Einheiten, Sprache & Diagrammfolge",
+        "units_head": "Einheiten, Sprache & Folge (Top 4)",
         "graphs": {
             "temp": "Temp & Gefühlt",
-            "precip_hum": "Niederschlag & Feuchte",
+            "precip_hum": "Regen & Feuchte",
             "wind": "Wind & Böen",
             "vis": "Sichtweite",
-            "press": "Luftdruck (hPa)",
+            "press": "Luftdruck",
             "uv_pollen": "UV & Pollen",
         },
         "guide_md": """
@@ -233,13 +234,13 @@ TRANSLATIONS = {
         "clear_btn": "Quitar",
         "reset_btn": "Restablecer",
         "toggle_loc2": "Mostrar superposición 2ª ubicación",
-        "units_head": "Unidades, Idioma y Orden de Gráficos",
+        "units_head": "Unidades, Idioma y Orden (Top 4)",
         "graphs": {
-            "temp": "Temp y Sensación",
-            "precip_hum": "Lluvia y Humedad",
-            "wind": "Viento y Ráfagas",
+            "temp": "Temp y Sens.",
+            "precip_hum": "Lluvia y Hum.",
+            "wind": "Viento y Ráf.",
             "vis": "Visibilidad",
-            "press": "Presión (hPa)",
+            "press": "Presión",
             "uv_pollen": "UV y Polen",
         },
         "guide_md": """
@@ -253,7 +254,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (with bulletproof mobile flex fixes)
+# 4. Shared WashDry CSS Architecture (Keyed Containers + Mobile Flex Lock)
 st.markdown(
     """
     <style>
@@ -269,23 +270,23 @@ st.markdown(
         margin: 0 auto;
     }
     
-    /* Force 4 Equal Columns for top Action Buttons only */
-    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) {
+    /* Top 4-Icon Navigation Bar - Locked Horizontal on iPhone */
+    .st-key-top_nav_bar div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 6px !important;
         width: 100% !important;
         align-items: center !important;
-        margin-bottom: -12px !important;
+        margin-bottom: -8px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) > div[data-testid="stColumn"] {
-        flex: 1 1 0px !important;
-        width: 25% !important;
+    .st-key-top_nav_bar div[data-testid="stColumn"] {
+        flex: 0 0 calc(25% - 4.5px) !important;
+        width: calc(25% - 4.5px) !important;
         min-width: 0 !important;
-        max-width: 25% !important;
+        max-width: calc(25% - 4.5px) !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key*="btn_"]) button {
+    .st-key-top_nav_bar button {
         width: 100% !important;
         white-space: nowrap !important;
         overflow: hidden !important;
@@ -293,67 +294,94 @@ st.markdown(
         font-size: 1.05rem !important;
         padding: 1px 2px !important;
         min-height: 32px !important;
+        height: 32px !important;
     }
 
-    /* Full-width dropdown box styling */
-    .dropdown-box {
+    /* Keyed Expander Box Containers */
+    .st-key-loc_box, .st-key-units_box, .st-key-guide_box {
         background-color: #1e1e1e !important;
         color: #ffffff !important;
-        border: 1px solid rgba(128,128,128,0.5);
-        border-radius: 6px;
-        padding: 8px 10px;
-        margin-top: 3px;
-        margin-bottom: 4px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        border: 1px solid rgba(128,128,128,0.5) !important;
+        border-radius: 6px !important;
+        padding: 8px 10px !important;
+        margin-top: 2px !important;
+        margin-bottom: 4px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
         width: 100% !important;
-        box-sizing: border-box;
+        box-sizing: border-box !important;
     }
-    .dropdown-box * {
+    .st-key-loc_box *, .st-key-units_box *, .st-key-guide_box * {
         color: #ffffff !important;
     }
-    .dropdown-box input {
+    .st-key-loc_box input {
         background-color: #2d2d2d !important;
         color: #ffffff !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
     }
 
-    /* Compact controls inside dropdown-box */
-    .dropdown-box div[data-testid="stSelectbox"] {
-        margin-bottom: -8px !important;
+    /* Compact Selectboxes inside Units Box - Locked Side-by-Side on iPhone */
+    .st-key-units_selects div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
     }
-    .dropdown-box div[data-testid="stSelectbox"] label {
-        font-size: 0.72rem !important;
+    .st-key-units_selects div[data-testid="stColumn"] {
+        flex: 0 0 calc(33.33% - 4px) !important;
+        width: calc(33.33% - 4px) !important;
+        min-width: 0 !important;
+        max-width: calc(33.33% - 4px) !important;
+    }
+    .st-key-units_box div[data-testid="stSelectbox"] {
+        margin-bottom: -10px !important;
+    }
+    .st-key-units_box div[data-testid="stSelectbox"] label {
+        font-size: 0.7rem !important;
         min-height: 0 !important;
         margin-bottom: 1px !important;
     }
-    .dropdown-box div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-        min-height: 28px !important;
-        height: 28px !important;
-        font-size: 0.8rem !important;
+    .st-key-units_box div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        min-height: 26px !important;
+        height: 26px !important;
+        font-size: 0.78rem !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
+        padding-left: 6px !important;
+        padding-right: 4px !important;
         background-color: #2d2d2d !important;
     }
-    
-    /* Bulletproof mobile flex overrides for graph order rows */
-    .dropdown-box div[data-testid="stHorizontalBlock"] {
+
+    /* Graph Sort Rows inside Units Box - Locked 1-Line Horizontal on iPhone */
+    div[class*="st-key-sort_row_"] div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
         gap: 4px !important;
-        margin-bottom: 2px !important;
         width: 100% !important;
+        margin-bottom: -10px !important;
     }
-    .dropdown-box div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+    div[class*="st-key-sort_row_"] div[data-testid="stColumn"]:nth-child(1) {
+        flex: 0 0 calc(62% - 4px) !important;
+        width: calc(62% - 4px) !important;
         min-width: 0 !important;
+        max-width: calc(62% - 4px) !important;
     }
-    .dropdown-box button {
-        min-height: 26px !important;
-        height: 26px !important;
-        padding: 0px 2px !important;
+    div[class*="st-key-sort_row_"] div[data-testid="stColumn"]:nth-child(2),
+    div[class*="st-key-sort_row_"] div[data-testid="stColumn"]:nth-child(3) {
+        flex: 0 0 calc(19% - 2px) !important;
+        width: calc(19% - 2px) !important;
+        min-width: 0 !important;
+        max-width: calc(19% - 2px) !important;
+    }
+    div[class*="st-key-sort_row_"] button {
+        min-height: 24px !important;
+        height: 24px !important;
+        padding: 0px !important;
         font-size: 0.75rem !important;
         line-height: 1 !important;
+        width: 100% !important;
     }
 
     .stale-badge {
@@ -674,15 +702,13 @@ if st.session_state.unit_wind == "mph":
     if slice_data_2:
         slice_data_2["vis"] = [round(v * 0.621371, 2) for v in slice_data_2["vis"]]
 
-# 6. Header Row (Unified Single-Line Flex Container to Prevent Vertical Stacking)
+# 6. Header Row
 badge_cls = "stale-badge" if is_stale else ""
 loc2_pill = (
     f'<span style="font-size:0.68rem; opacity:0.75; margin-left:6px;">⋯ {st.session_state.loc2["name"]}</span>'
     if (st.session_state.loc2 and st.session_state.loc2_enabled)
     else ""
 )
-
-import base64
 
 def get_encoded_logo(filename, label):
     try:
@@ -778,7 +804,6 @@ def build_svg_block(charts_to_render):
 
     svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{HEADER_H}" fill="rgba(128,128,128,0.08)"/>')
 
-    # Daylight header highlight bars behind times (yellow morphing to amber in last 1/8th at each end)
     for idx, (dx1, dx2) in enumerate(day_rects):
         grad_id = f"dayHeadGrad_{idx}"
         span_w = max(1.0, dx2 - dx1)
@@ -839,7 +864,6 @@ def build_svg_block(charts_to_render):
             min_t = math.floor(min(all_t) - 2)
             max_t = math.ceil(max(all_t) + 2)
 
-            # Check if freezing point (<= 0°C) occurs and comes above the bottom of the graph
             freeze_val_c = 0.0
             freeze_val = freeze_val_c if st.session_state.unit_temp == "C" else (freeze_val_c * 9/5 + 32)
             if min_t < freeze_val:
@@ -916,7 +940,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<g transform="translate({dx-11}, {dy})">{arrow_svg}</g>')
             svg_parts.append(f'<text x="{dx+4}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{abs_diff_str}</text>')
 
-            # Thermometer icon (partially red, matching temp color #ef4444)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -5 v5.5 a2.5 2.5 0 1 1 -2 0 v-5.5 a2 2 0 1 1 4 0 z" fill="none" stroke="#ef4444" stroke-width="1.2"/>')
@@ -983,7 +1006,6 @@ def build_svg_block(charts_to_render):
             hhx = max(PAD_L + 22, min(W - PAD_R - 22, hhx))
             lhx = max(PAD_L + 22, min(W - PAD_R - 22, lhx))
 
-            # Shift High humidity pill left if near right edge (to prevent 100% pill clashing with icon)
             if hhx > W - PAD_R - 45:
                 hhx = W - PAD_R - 45
 
@@ -998,7 +1020,6 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
 
-            # Rain icon (blue umbrella & raindrops, matching underfill #2980b9)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-5 1 C-5 -3.5, 5 -3.5, 5 1 C 2.5 0, -2.5 0, -5 1 Z" fill="#2980b9"/>')
@@ -1011,7 +1032,6 @@ def build_svg_block(charts_to_render):
 
             total_24h = sum(mms[:24])
             if total_24h >= 0.05:
-                # Dynamic Xmm/24 pill sliding left if overlapping icon area
                 tot_pill_x = W - PAD_R - 22
                 if abs(tot_pill_x - icon_x) < 48:
                     tot_pill_x = icon_x - 24
@@ -1097,7 +1117,6 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
-            # Wind icon (swirly breeze lines in slate grey #64748b)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-6 -2 c3 0 5 -2 5 -4 a2 2 0 0 0 -4 -2 c-3 0 -5 3 -5 6 h9" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round"/>')
@@ -1185,7 +1204,6 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{badge_x-9}" y="{y_danger-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
                 svg_parts.append(f'<text x="{badge_x}" y="{y_danger-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{d_label}</text>')
 
-            # Visibility icon (sideways looking green #16a085 eye)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-6 0 C-3 -3.5, 3 -3.5, 6 0 C 3 3.5, -3 3.5, -6 0 Z" fill="none" stroke="#16a085" stroke-width="1.2"/>')
@@ -1243,7 +1261,6 @@ def build_svg_block(charts_to_render):
                     svg_parts.append(f'<rect x="{tx-18}" y="{ty+5}" width="36" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
                     svg_parts.append(f'<text x="{tx}" y="{ty+14.5}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">{trend_txt}</text>')
 
-            # Pressure icon (purple #8e44ad arrows squashing lines)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -6 L0 -2 M-2 -4 L0 -2 L2 -4" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -1311,7 +1328,6 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<text x="{px}" y="{py+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{rating_label}</text>')
                 last_x = px
 
-            # UV / Pollen icon (amber sun #f39c12 with green pollen dots #27ae60)
             svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<circle cx="0" cy="-2" r="2.2" fill="#f39c12"/>')
@@ -1333,36 +1349,37 @@ def build_svg_block(charts_to_render):
 
 
 # ==========================================
-# 4-BUTTON ICON ROW (USING CLEAN SUPPORTED EMOJIS)
+# 4-BUTTON ICON ROW (KEYED FOR MOBILE LOCK)
 # ==========================================
 if "active_expander" not in st.session_state:
     st.session_state.active_expander = None
 
-col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+with st.container(key="top_nav_bar"):
+    col_b1, col_b2, col_b3, col_b4 = st.columns(4)
 
-with col_b1:
-    open_1 = (st.session_state.active_expander == "loc")
-    if st.button("📍", use_container_width=True, key="btn_loc"):
-        st.session_state.active_expander = None if open_1 else "loc"
-        st.rerun()
+    with col_b1:
+        open_1 = (st.session_state.active_expander == "loc")
+        if st.button("📍", use_container_width=True, key="btn_loc"):
+            st.session_state.active_expander = None if open_1 else "loc"
+            st.rerun()
 
-with col_b2:
-    open_2 = (st.session_state.active_expander == "units")
-    if st.button("⚙️", use_container_width=True, key="btn_units"):
-        st.session_state.active_expander = None if open_2 else "units"
-        st.rerun()
+    with col_b2:
+        open_2 = (st.session_state.active_expander == "units")
+        if st.button("⚙️", use_container_width=True, key="btn_units"):
+            st.session_state.active_expander = None if open_2 else "units"
+            st.rerun()
 
-with col_b3:
-    open_3 = (st.session_state.active_expander == "guide")
-    if st.button("📖❓", use_container_width=True, key="btn_guide"):
-        st.session_state.active_expander = None if open_3 else "guide"
-        st.rerun()
+    with col_b3:
+        open_3 = (st.session_state.active_expander == "guide")
+        if st.button("📖❓", use_container_width=True, key="btn_guide"):
+            st.session_state.active_expander = None if open_3 else "guide"
+            st.rerun()
 
-with col_b4:
-    open_4 = (st.session_state.active_expander == "overlay")
-    if st.button("▾", use_container_width=True, key="btn_overlay"):
-        st.session_state.active_expander = None if open_4 else "overlay"
-        st.rerun()
+    with col_b4:
+        open_4 = (st.session_state.active_expander == "overlay")
+        if st.button("▾", use_container_width=True, key="btn_overlay"):
+            st.session_state.active_expander = None if open_4 else "overlay"
+            st.rerun()
 
 
 # Helper function to resolve UK Postcode, Global City, or Raw Coordinates
@@ -1400,8 +1417,7 @@ def resolve_location_string(query_str):
 # IN-PLACE CONTENT SWAP: GRAPHS OR ACTIVE EXPANDER
 # ==========================================
 if st.session_state.active_expander == "loc":
-    with st.container():
-        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
+    with st.container(key="loc_box"):
         st.markdown(f"**{T['loc1_head']}**")
         with st.form(key="loc1_form"):
             q1 = st.text_input("Primary Location", placeholder=T["loc_placeholder"], label_visibility="collapsed")
@@ -1475,76 +1491,70 @@ if st.session_state.active_expander == "loc":
                 )
                 st.session_state.active_expander = None
                 st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.active_expander == "units":
-    with st.container():
-        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:0.82rem; font-weight:700; margin-bottom:4px;'>{T['units_head']}</div>", unsafe_allow_html=True)
+    with st.container(key="units_box"):
+        st.markdown(f"<div style='font-size:0.78rem; font-weight:700; margin-bottom:2px;'>{T['units_head']}</div>", unsafe_allow_html=True)
         
-        # Ultra-compact single-row units & language selectors
-        u_col1, u_col2, u_col3 = st.columns(3)
-        with u_col1:
-            t_choice = st.selectbox("Temp", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
-            if t_choice != st.session_state.unit_temp:
-                st.session_state.unit_temp = t_choice
-                st.rerun()
-        with u_col2:
-            w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
-            if w_choice != st.session_state.unit_wind:
-                st.session_state.unit_wind = w_choice
-                st.rerun()
-        with u_col3:
-            lang_keys = ["en", "fr", "de", "es"]
-            l_choice = st.selectbox(
-                "Lang",
-                lang_keys,
-                index=lang_keys.index(st.session_state.lang),
-                format_func=lambda x: x.upper(),
-                key="sel_lang"
-            )
-            if l_choice != st.session_state.lang:
-                st.session_state.lang = l_choice
-                st.rerun()
+        with st.container(key="units_selects"):
+            u_col1, u_col2, u_col3 = st.columns(3)
+            with u_col1:
+                t_choice = st.selectbox("Temp", ["C", "F"], index=0 if st.session_state.unit_temp == "C" else 1, key="sel_temp")
+                if t_choice != st.session_state.unit_temp:
+                    st.session_state.unit_temp = t_choice
+                    st.rerun()
+            with u_col2:
+                w_choice = st.selectbox("Speed", ["mph", "km/h"], index=0 if st.session_state.unit_wind == "mph" else 1, key="sel_wind")
+                if w_choice != st.session_state.unit_wind:
+                    st.session_state.unit_wind = w_choice
+                    st.rerun()
+            with u_col3:
+                lang_keys = ["en", "fr", "de", "es"]
+                l_choice = st.selectbox(
+                    "Lang",
+                    lang_keys,
+                    index=lang_keys.index(st.session_state.lang),
+                    format_func=lambda x: x.upper(),
+                    key="sel_lang"
+                )
+                if l_choice != st.session_state.lang:
+                    st.session_state.lang = l_choice
+                    st.rerun()
 
-        st.markdown("<hr style='margin: 8px 0 6px 0; border-color: rgba(255,255,255,0.18);'/>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 6px 0 4px 0; border-color: rgba(255,255,255,0.18);'/>", unsafe_allow_html=True)
 
-        # Compact 6-graph sort list with responsive column ratios for iPhone
         order = st.session_state.graph_order
         for idx, g_key in enumerate(order):
             g_label = T["graphs"].get(g_key, g_key)
             screen_tag = "Main" if idx < 4 else "More"
             badge_bg = "rgba(39, 174, 96, 0.35)" if idx < 4 else "rgba(128, 128, 128, 0.25)"
             
-            r_col1, r_col2, r_col3 = st.columns([5.2, 2.4, 2.4])
-            with r_col1:
-                st.markdown(
-                    f"<div style='font-size:0.75rem; line-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
-                    f"<span style='opacity:0.65; font-weight:700;'>{idx+1}.</span> <b>{g_label}</b> "
-                    f"<span style='font-size:0.6rem; background:{badge_bg}; padding:1px 3px; border-radius:3px;'>{screen_tag}</span>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-            with r_col2:
-                if st.button("▲ Up", key=f"up_{g_key}", disabled=(idx == 0), use_container_width=True):
-                    order[idx], order[idx - 1] = order[idx - 1], order[idx]
-                    st.session_state.graph_order = order
-                    st.query_params["g_order"] = ",".join(order)
-                    st.rerun()
-            with r_col3:
-                if st.button("▼ Dn", key=f"dn_{g_key}", disabled=(idx == len(order) - 1), use_container_width=True):
-                    order[idx], order[idx + 1] = order[idx + 1], order[idx]
-                    st.session_state.graph_order = order
-                    st.query_params["g_order"] = ",".join(order)
-                    st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(key=f"sort_row_{idx}"):
+                r_col1, r_col2, r_col3 = st.columns([6.2, 1.9, 1.9])
+                with r_col1:
+                    st.markdown(
+                        f"<div style='font-size:0.76rem; line-height:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
+                        f"<span style='opacity:0.65; font-weight:700;'>{idx+1}.</span> <b>{g_label}</b> "
+                        f"<span style='font-size:0.6rem; background:{badge_bg}; padding:1px 3px; border-radius:3px;'>{screen_tag}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                with r_col2:
+                    if st.button("▲", key=f"up_{g_key}", disabled=(idx == 0), use_container_width=True):
+                        order[idx], order[idx - 1] = order[idx - 1], order[idx]
+                        st.session_state.graph_order = order
+                        st.query_params["g_order"] = ",".join(order)
+                        st.rerun()
+                with r_col3:
+                    if st.button("▼", key=f"dn_{g_key}", disabled=(idx == len(order) - 1), use_container_width=True):
+                        order[idx], order[idx + 1] = order[idx + 1], order[idx]
+                        st.session_state.graph_order = order
+                        st.query_params["g_order"] = ",".join(order)
+                        st.rerun()
 
 elif st.session_state.active_expander == "guide":
-    with st.container():
-        st.markdown('<div class="dropdown-box">', unsafe_allow_html=True)
+    with st.container(key="guide_box"):
         st.markdown(T["guide_md"])
-        st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     if st.session_state.active_expander != "overlay":
