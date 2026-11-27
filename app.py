@@ -151,7 +151,7 @@ components.html(
     width=0,
 )
 
-# 3. Lightweight Multilingual Dictionary (Concise & Clean)
+# 3. Lightweight Multilingual Dictionary
 TRANSLATIONS = {
     "en": {
         "loc1_head": "Primary Location",
@@ -254,7 +254,7 @@ TRANSLATIONS = {
 
 T = TRANSLATIONS.get(st.session_state.lang, TRANSLATIONS["en"])
 
-# 4. Shared WashDry CSS Architecture (Keyed Containers + Mobile Flex Lock)
+# 4. Shared WashDry CSS Architecture
 st.markdown(
     """
     <style>
@@ -270,7 +270,6 @@ st.markdown(
         margin: 0 auto;
     }
     
-    /* Top 4-Icon Navigation Bar - Locked Horizontal on iPhone */
     .st-key-top_nav_bar div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -297,7 +296,6 @@ st.markdown(
         height: 32px !important;
     }
 
-    /* Keyed Expander Box Containers */
     .st-key-loc_box, .st-key-units_box, .st-key-guide_box {
         background-color: #1e1e1e !important;
         color: #ffffff !important;
@@ -319,7 +317,6 @@ st.markdown(
         border: 1px solid rgba(255,255,255,0.2) !important;
     }
 
-    /* Compact Selectboxes inside Units Box - Locked Side-by-Side on iPhone */
     .st-key-units_selects div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -352,7 +349,6 @@ st.markdown(
         background-color: #2d2d2d !important;
     }
 
-    /* Graph Sort Rows inside Units Box - Locked 1-Line Horizontal on iPhone */
     div[class*="st-key-sort_row_"] div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -638,7 +634,7 @@ else:
         "wind": get_slice("wind_speed_10m", 10.0),
         "gust": get_slice("wind_gusts_10m", 15.0),
         "wind_dir": get_slice("wind_direction_10m", 180),
-        "vis": [round(v / 1000.0, 2) for v in get_slice("visibility", 10000.0)],
+        "vis": [round(min(20.0, v / 1000.0), 2) for v in get_slice("visibility", 10000.0)],
         "hum": get_slice("relative_humidity_2m", 70),
         "press": [round(p) for p in get_slice("surface_pressure", 1013)],
         "uv": uv_raw,
@@ -678,13 +674,12 @@ if st.session_state.loc2 and st.session_state.loc2_enabled:
             "temp": get_slice2("temperature_2m", 15.0),
             "precip_prob": get_slice2("precipitation_probability", 0),
             "wind": get_slice2("wind_speed_10m", 10.0),
-            "vis": [round(v / 1000.0, 2) for v in get_slice2("visibility", 10000.0)],
+            "vis": [round(min(20.0, v / 1000.0), 2) for v in get_slice2("visibility", 10000.0)],
             "hum": get_slice2("relative_humidity_2m", 70),
             "press": [round(p) for p in get_slice2("surface_pressure", 1013)],
             "uv": get_slice2("uv_index", 0.0),
         }
 
-# Preserve raw Celsius temperatures for freeze checking before unit conversion
 temp_raw_celsius = list(slice_data["temp"])
 
 if st.session_state.unit_temp == "F":
@@ -855,6 +850,7 @@ def build_svg_block(charts_to_render):
         if row_idx > 0:
             svg_parts.append(f'<line x1="0" y1="{y0}" x2="{W}" y2="{y0}" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>')
 
+        # Background Midnight Line (Renders first so icons & pills cover it)
         svg_parts.append(f'<line x1="{midnight_x:.1f}" y1="{y0}" x2="{midnight_x:.1f}" y2="{y1}" stroke="currentColor" stroke-width="1" opacity="0.25"/>')
 
         if metric == "temp":
@@ -940,8 +936,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<g transform="translate({dx-11}, {dy})">{arrow_svg}</g>')
             svg_parts.append(f'<text x="{dx+4}" y="{dy+3.5}" font-size="9.5" font-weight="700" fill="#ef4444" text-anchor="middle">{abs_diff_str}</text>')
 
-            # Exact Custom Thermometer Icon (Box 18x18, perfectly centered & tightly margined)
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -6.5 v6 a2.2 2.2 0 1 1 -1.8 0 v-6 a1.8 1.8 0 1 1 3.6 0 z" fill="#ef4444"/>')
             svg_parts.append('<circle cx="0" cy="4.2" r="1.4" fill="#ef4444"/>')
@@ -1009,6 +1004,7 @@ def build_svg_block(charts_to_render):
             if hhx > W - PAD_R - 45:
                 hhx = W - PAD_R - 45
 
+            # Humidity & Rain probability clash avoidance (Slide sideways if overlapping)
             if abs(hhx - px_prob) < 38 and abs(hhy - py_prob) < 18:
                 hhx = min(W - PAD_R - 22, hhx + 42) if hhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, hhx - 42)
             if abs(lhx - px_prob) < 38 and abs(lhy - py_prob) < 18:
@@ -1020,8 +1016,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append(f'<rect x="{lhx-19}" y="{lhy-6.5}" width="38" height="13" fill="#1f1f1f" stroke="#16a085" stroke-width="0.85" rx="2.5"/>')
             svg_parts.append(f'<text x="{lhx}" y="{lhy+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{min_h_int}</text>')
 
-            # Exact Custom Rain/Humidity Icon in Graph Line Blue (#2980b9), Tightly Filled Box
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-6 1.2 C-6 -4.2, 6 -4.2, 6 1.2 C 3 0, -3 0, -6 1.2 Z" fill="#2980b9"/>')
             svg_parts.append('<path d="M0 -1.5 v3.8 a1.5 1.5 0 0 1 -1.5 1.5" fill="none" stroke="#2980b9" stroke-width="1.2" stroke-linecap="round"/>')
@@ -1115,8 +1110,7 @@ def build_svg_block(charts_to_render):
                     f"</g>"
                 )
 
-            # Exact Custom Wind Icon (Box 18x18, tightly filled)
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-6 -2.5 c3.5 0 6 -2.2 6 -4.5 a2 2 0 0 0 -4 -2 c-2.5 0 -4.5 2.5 -4.5 5.5 h8.5" fill="none" stroke="#64748b" stroke-width="1.3" stroke-linecap="round"/>')
             svg_parts.append('<path d="M-7 3.5 c4.5 0 7.5 -2.2 7.5 -4.5 a1.8 1.8 0 0 0 -3.5 -1 c-2 0 -4 2 -4 4.5 h11" fill="none" stroke="#64748b" stroke-width="1.3" stroke-linecap="round"/>')
@@ -1170,7 +1164,8 @@ def build_svg_block(charts_to_render):
             min_vis_val = min(vis_raw)
             max_vis_int = int(round(max_vis_val))
             min_vis_int = int(round(min_vis_val))
-            max_vis_label = f"{max_vis_int}+" if max_vis_int >= 20 else str(max_vis_int)
+            # Capped at 20+ to never clash with graph icon box
+            max_vis_label = f"{min(20, max_vis_int)}+" if max_vis_int >= 20 else str(max_vis_int)
 
             max_vis_idx = vis_raw.index(max_vis_val)
             min_vis_idx = vis_raw.index(min_vis_val)
@@ -1203,8 +1198,7 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<rect x="{badge_x-9}" y="{y_danger-11:.1f}" width="18" height="11" fill="#d1d5db" stroke="#ef4444" stroke-width="0.9" rx="2"/>')
                 svg_parts.append(f'<text x="{badge_x}" y="{y_danger-3:.1f}" font-size="8.5" font-weight="600" fill="#1f1f1f" text-anchor="middle">{d_label}</text>')
 
-            # Exact Custom Eye Icon (Box 18x18, tightly filled)
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M-6.5 0 C-3.5 -4.2, 3.5 -4.2, 6.5 0 C 3.5 4.2, -3.5 4.2, -6.5 0 Z" fill="none" stroke="#16a085" stroke-width="1.3"/>')
             svg_parts.append('<circle cx="0" cy="0" r="2" fill="#16a085"/>')
@@ -1258,8 +1252,7 @@ def build_svg_block(charts_to_render):
                     svg_parts.append(f'<rect x="{tx-18}" y="{ty+5}" width="36" height="13" fill="#1f1f1f" stroke="#8e44ad" stroke-width="0.85" rx="2.5"/>')
                     svg_parts.append(f'<text x="{tx}" y="{ty+14.5}" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">{trend_txt}</text>')
 
-            # Exact Custom Pressure Icon in Graph Line Purple (#8e44ad), Tightly Filled Box
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<path d="M0 -6.5 L0 -2.5 M-2 -4.5 L0 -2.5 L2 -4.5" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>')
             svg_parts.append('<path d="M-6 -1.2 C-3 -2.2, 3 -2.2, 6 -1.2" fill="none" stroke="#8e44ad" stroke-width="1.3" stroke-linecap="round"/>')
@@ -1326,8 +1319,7 @@ def build_svg_block(charts_to_render):
                 svg_parts.append(f'<text x="{px}" y="{py+3.5}" font-size="9.5" font-weight="700" fill="#ffffff" text-anchor="middle">{rating_label}</text>')
                 last_x = px
 
-            # Exact Custom UV/Pollen Icon (Box 18x18, tightly filled)
-            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="rgba(128,128,128,0.15)" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
+            svg_parts.append(f'<rect x="{icon_x}" y="{y0+3}" width="18" height="18" rx="3" fill="#1f1f1f" stroke="currentColor" stroke-width="0.75" opacity="0.85"/>')
             svg_parts.append(f'<g transform="translate({icon_x+9}, {y0+12})">')
             svg_parts.append('<circle cx="0" cy="-2.2" r="2.5" fill="#f39c12"/>')
             svg_parts.append('<circle cx="-1" cy="-3.2" r="0.7" fill="#27ae60"/>')
@@ -1377,7 +1369,6 @@ with st.container(key="top_nav_bar"):
             st.rerun()
 
 
-# Helper function to resolve UK Postcode, Global City, or Raw Coordinates
 def resolve_location_string(query_str):
     q = query_str.strip()
     if "," in q:
@@ -1558,7 +1549,7 @@ else:
         build_svg_block(st.session_state.graph_order[4:])
 
 
-# 9. Footer Branding (Always Fixed at Screen Bottom)
+# 9. Footer Branding
 st.markdown(
     """
     <div class="footer-container">
