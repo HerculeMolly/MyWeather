@@ -92,7 +92,7 @@ lat = st.session_state.lat
 lon = st.session_state.lon
 city_name = st.session_state.city
 
-# LocalStorage Sync Bridge (Persists locations & graph order across iOS Home Screen app close/reopen)
+# LocalStorage Sync Bridge
 loc2_js_lat = str(st.session_state.loc2["lat"]) if st.session_state.loc2 else ""
 loc2_js_lon = str(st.session_state.loc2["lon"]) if st.session_state.loc2 else ""
 loc2_js_name = st.session_state.loc2["name"].replace('"', '\\"') if st.session_state.loc2 else ""
@@ -1004,9 +1004,15 @@ def build_svg_block(charts_to_render):
             if hhx > W - PAD_R - 45:
                 hhx = W - PAD_R - 45
 
-            # Humidity & Rain probability clash avoidance (Slide sideways if overlapping)
+            # Collision Avoidance: Check vs Rain Prob pill AND 24h Total mm pill in top right corner
+            total_24h = sum(mms[:24])
+            tot_pill_x = W - PAD_R - 22 if total_24h >= 0.05 else -999
+
             if abs(hhx - px_prob) < 38 and abs(hhy - py_prob) < 18:
                 hhx = min(W - PAD_R - 22, hhx + 42) if hhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, hhx - 42)
+            if tot_pill_x > 0 and abs(hhx - tot_pill_x) < 44 and abs(hhy - (y0 + 9.5)) < 16:
+                hhx = max(PAD_L + 22, hhx - 46)
+
             if abs(lhx - px_prob) < 38 and abs(lhy - py_prob) < 18:
                 lhx = min(W - PAD_R - 22, lhx + 42) if lhx + 42 <= W - PAD_R - 22 else max(PAD_L + 22, lhx - 42)
 
@@ -1023,9 +1029,7 @@ def build_svg_block(charts_to_render):
             svg_parts.append('</g>')
             svg_parts.append(f'<text x="{icon_x + 22}" y="{y0 + 15.5}" font-size="12" font-weight="700" fill="currentColor">%</text>')
 
-            total_24h = sum(mms[:24])
             if total_24h >= 0.05:
-                tot_pill_x = W - PAD_R - 22
                 if abs(tot_pill_x - icon_x) < 48:
                     tot_pill_x = icon_x - 24
                 svg_parts.append(f'<rect x="{tot_pill_x - 21}" y="{y0+3}" width="42" height="13" fill="#1f1f1f" stroke="#2980b9" stroke-width="0.85" rx="2"/>')
@@ -1164,7 +1168,6 @@ def build_svg_block(charts_to_render):
             min_vis_val = min(vis_raw)
             max_vis_int = int(round(max_vis_val))
             min_vis_int = int(round(min_vis_val))
-            # Capped at 20+ to never clash with graph icon box
             max_vis_label = f"{min(20, max_vis_int)}+" if max_vis_int >= 20 else str(max_vis_int)
 
             max_vis_idx = vis_raw.index(max_vis_val)
